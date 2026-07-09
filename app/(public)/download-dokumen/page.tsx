@@ -116,9 +116,8 @@ export default function DownloadDokumenPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari dokumen..."
-              className="w-full rounded-xl px-5 py-3.5 pl-12 text-gray-800 text-base focus:outline-none focus:ring-2 shadow-lg"
+              className="w-full rounded-xl px-5 py-3.5 pl-12 text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-[#d0db41] shadow-lg"
               style={{
-                focusRingColor: '#d0db41',
                 fontFamily: '"TeX Gyre Bonum", Georgia, serif',
               }}
             />
