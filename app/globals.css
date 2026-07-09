@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* ── Brand CSS Variables ── */
+:root {
+  --brand-dark:   #00282b;
+  --brand-cyan:   #01bcce;
+  --brand-lime:   #d0db41;
+}
+
+/* ── Tailwind Custom Theme ── */
+@theme {
+  --color-brand-dark:    #00282b;
+  --color-brand-cyan:    #01bcce;
+  --color-brand-lime:    #d0db41;
+  --color-brand-darkalt: #013a3f;
+
+  --font-bonum: "TeX Gyre Bonum", "Libre Baskerville", Georgia, serif;
+  --font-nav:   "Nunito", "Varela Round", sans-serif;
+}
+
+/* ── Base Resets ── */
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-bonum);
+  color: #0d1b1e;
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Typography ── */
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-bonum);
+}
+
+/* ── Nav font utility ── */
+.font-nav {
+  font-family: var(--font-nav);
+}
+
+/* ── Brand color utilities ── */
+.text-brand-dark  { color: var(--brand-dark); }
+.text-brand-cyan  { color: var(--brand-cyan); }
+.text-brand-lime  { color: var(--brand-lime); }
+.bg-brand-dark    { background-color: var(--brand-dark); }
+.bg-brand-cyan    { background-color: var(--brand-cyan); }
+.bg-brand-lime    { background-color: var(--brand-lime); }
+.border-brand-cyan { border-color: var(--brand-cyan); }
+.border-brand-lime { border-color: var(--brand-lime); }
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: var(--brand-cyan); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brand-dark); }
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fadeInUp 0.65s ease both; }
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.5); opacity: 0.6; }
+}
+.animate-pulse-dot { animation: pulse-dot 1.5s infinite; }
+
+@keyframes scroll-wheel {
+  0%   { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(10px); opacity: 0; }
+}
+.animate-scroll-wheel { animation: scroll-wheel 1.5s ease-in-out infinite; }
+
+/* ── Line Clamp ── */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
