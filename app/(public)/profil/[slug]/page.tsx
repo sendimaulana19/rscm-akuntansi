@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+
+export const dynamic = 'force-dynamic'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -35,60 +37,101 @@ export default async function ProfilSlugPage({ params }: Props) {
   const supabase = await createClient()
   const { slug } = await params
 
+  if (slug === 'budaya-kerja') {
+    redirect('/profil/budaya-kerja')
+  }
+
   const { data, error } = await supabase
     .from('halaman_profil')
-    .select('id, slug, judul, konten, gambar_url, file_url, file_name, updated_at')
+    .select('id, slug, judul, konten, gambar_url, file_url, updated_at')
     .eq('slug', slug)
     .single()
 
+  let halaman = data as HalamanProfil | null
+  console.log("DEBUG_PROFIL:", { slug, data, error })
+  
   if (error || !data) {
-    notFound()
+    if (slug === 'tim-kerja-akuntansi') {
+      halaman = {
+        id: 'temp',
+        slug: 'tim-kerja-akuntansi',
+        judul: 'Profil Tim Kerja Akuntansi',
+        konten: '<p style="text-align:center; color:#666;"><em>Konten profil belum ditambahkan. Silakan perbarui melalui Panel Admin.</em></p>'
+      }
+    } else {
+      notFound()
+    }
   }
 
-  const halaman = data as HalamanProfil
   const isKpi = slug === 'kpi'
+  
+  if (isKpi && halaman?.konten) {
+    let url = halaman.konten.replace(/<[^>]+>/g, '').trim()
+    if (url.startsWith('http')) {
+      redirect(url)
+    }
+  }
+
+  if (!halaman) return null;
 
   return (
     <main
       className="min-h-screen"
       style={{ fontFamily: '"TeX Gyre Bonum", Georgia, serif', background: '#f4f6f8' }}
     >
-      {/* Header */}
-      <div
-        className="w-full py-12 px-6"
-        style={{
+      {/* Hero Section */}
+      <div style={{
+          position: 'relative', height: 280,
           background: 'linear-gradient(135deg, #00282b 0%, #015a61 100%)',
-        }}
-      >
-        <div className="max-w-4xl mx-auto">
-          <h1
-            className="text-3xl md:text-4xl font-bold text-white mb-2"
-            style={{ fontFamily: 'Nunito, sans-serif' }}
-          >
-            {halaman.judul}
-          </h1>
-          {halaman.updated_at && (
-            <p
-              className="text-sm"
-              style={{ color: '#a0d8dd', fontFamily: 'Nunito, sans-serif' }}
-            >
-              Terakhir diperbarui:{' '}
-              {new Date(halaman.updated_at).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </p>
-          )}
-          <div
-            className="mt-4 h-1 w-24 rounded-full"
-            style={{ background: '#d0db41' }}
-          />
+          overflow: 'hidden',
+        }}>
+        {/* Watermark Ornamen Mandala (Kanan Atas) */}
+        <img
+          src="/ornament-mandala.png"
+          alt=""
+          className="absolute -top-10 -right-10 w-48 h-48 object-contain pointer-events-none select-none z-0"
+          style={{ opacity: 0.15 }}
+        />
+
+        {/* Watermark Ornamen Sisi Kiri */}
+        <img
+          src="/ornament-side.png"
+          alt=""
+          className="absolute -left-6 sm:-left-8 top-0 bottom-0 h-full w-32 sm:w-44 object-cover object-left pointer-events-none select-none z-0 opacity-[0.08]"
+          style={{ filter: 'brightness(0) invert(1)' }}
+        />
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 1140, margin: '0 auto', padding: '0 24px', height: '100%', display: 'flex', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: 42, fontWeight: 900, color: '#fff', lineHeight: 1.1, margin: 0, fontFamily: 'Nunito, sans-serif' }}>
+              {halaman.judul.startsWith('Profil ') ? (
+                <>
+                  Profil<br />
+                  {halaman.judul.substring(7)}
+                </>
+              ) : (
+                halaman.judul
+              )}
+            </h1>
+            {halaman.updated_at && (
+              <p
+                className="text-sm mt-3"
+                style={{ color: '#a0d8dd', fontFamily: 'Nunito, sans-serif' }}
+              >
+                Terakhir diperbarui:{' '}
+                {new Date(halaman.updated_at).toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </p>
+            )}
+            <div style={{ width: 70, height: 4, background: '#d0db41', borderRadius: 2, marginTop: 16 }} />
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-10">
+      <div style={{ maxWidth: 1140, margin: '40px auto 40px', padding: '0 24px', position: 'relative', zIndex: 10 }}>
         {/* Cover Image */}
         {halaman.gambar_url && (
           <div className="mb-8 rounded-2xl overflow-hidden shadow-xl">
@@ -108,7 +151,7 @@ export default async function ProfilSlugPage({ params }: Props) {
           style={{ border: '1px solid #e0e0e0' }}
         >
           <div
-            className="prose prose-lg max-w-none leading-relaxed text-gray-700"
+            className="prose prose-lg max-w-none leading-relaxed text-gray-700 break-words whitespace-pre-wrap"
             style={{ fontFamily: '"TeX Gyre Bonum", Georgia, serif' }}
             dangerouslySetInnerHTML={{ __html: halaman.konten }}
           />

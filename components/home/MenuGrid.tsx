@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { CalendarDays, TrendingUp, BarChart3, CheckSquare, PlaySquare, Star, Download, Image as ImageIcon, Megaphone } from 'lucide-react'
+import { CalendarDays, TrendingUp, BarChart3, CheckSquare, GraduationCap, Scale, Image as ImageIcon, Megaphone, HelpCircle } from 'lucide-react'
 
 const menuItems = [
   {
@@ -44,31 +44,21 @@ const menuItems = [
     hoverText: '#00282b'
   },
   {
-    id: 'video-tutorial',
-    icon: PlaySquare,
-    label: 'Video Tutorial',
-    desc: 'Panduan & tutorial kerja',
-    href: '/video-tutorial',
+    id: 'pusat-edukasi',
+    icon: GraduationCap,
+    label: 'Pusat Edukasi',
+    desc: 'Panduan, materi & video',
+    href: '/pusat-edukasi',
     color: '#01bcce',
     glow: 'rgba(1,188,206,0.3)',
     hoverText: '#ffffff'
   },
   {
-    id: 'kepuasan',
-    icon: Star,
-    label: 'Kepuasan Pelanggan',
-    desc: 'Survei & indeks kepuasan',
-    href: '/kepuasan-pelanggan',
-    color: '#00282b',
-    glow: 'rgba(0,40,43,0.3)',
-    hoverText: '#ffffff'
-  },
-  {
-    id: 'download',
-    icon: Download,
-    label: 'Download Dokumen',
-    desc: 'Unduh dokumen & formulir',
-    href: '/download-dokumen',
+    id: 'regulasi-kebijakan',
+    icon: Scale,
+    label: 'Regulasi dan Kebijakan',
+    desc: 'Peraturan, pedoman & SK',
+    href: '/regulasi-kebijakan',
     color: '#d0db41',
     glow: 'rgba(208,219,65,0.3)',
     hoverText: '#00282b'
@@ -92,6 +82,16 @@ const menuItems = [
     color: '#00282b',
     glow: 'rgba(0,40,43,0.3)',
     hoverText: '#ffffff'
+  },
+  {
+    id: 'faq',
+    icon: HelpCircle,
+    label: 'FAQ',
+    desc: 'Pertanyaan sering diajukan',
+    href: '/faq',
+    color: '#d0db41',
+    glow: 'rgba(208,219,65,0.3)',
+    hoverText: '#00282b'
   },
 ]
 

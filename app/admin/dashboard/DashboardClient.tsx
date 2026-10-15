@@ -4,19 +4,20 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Megaphone, Camera, Download, Users, TrendingUp,
-  FileText, CheckSquare, Video, Star, Building, LogOut, Settings, ChevronRight
+  FileText, CheckSquare, Video, Star, Building, LogOut, Settings, ChevronRight, Sparkles
 } from 'lucide-react'
 
 const adminModules = [
-  { icon: <TrendingUp size={20} />, label: 'Kinerja Keuangan', desc: 'Input 12 KPI per periode', href: '/admin/kinerja-keuangan', color: '#01bcce' },
+  { icon: <TrendingUp size={20} />, label: 'Data Laporan', desc: 'Input Neraca, Operasional, Arus Kas & 12 Indikator', href: '/admin/data-laporan', color: '#01bcce' },
   { icon: <FileText size={20} />, label: 'Laporan Keuangan', desc: 'Upload laporan & CALK', href: '/admin/laporan-keuangan', color: '#00282b' },
   { icon: <CheckSquare size={20} />, label: 'Akuntansi Manajemen', desc: 'Kelola laporan KSO', href: '/admin/akuntansi-manajemen', color: '#d0db41', textColor: '#00282b' },
+  { icon: <CheckSquare size={20} />, label: 'Akuntansi Verifikasi', desc: 'Kelola dokumen tagihan', href: '/admin/akuntansi-verifikasi', color: '#01bcce' },
+  { icon: <Sparkles size={20} />, label: 'Budaya Kerja', desc: 'Kelola artikel & nilai budaya kerja', href: '/admin/budaya-kerja', color: '#01bcce' },
   { icon: <Video size={20} />, label: 'Video Tutorial', desc: 'Upload video & judul', href: '/admin/video-tutorial', color: '#01bcce' },
-  { icon: <Star size={20} />, label: 'Kepuasan Pelanggan', desc: 'Upload gambar/PDF kepuasan', href: '/admin/kepuasan-pelanggan', color: '#00282b' },
   { icon: <Download size={20} />, label: 'Download Dokumen', desc: 'Kelola dokumen unduhan', href: '/admin/download-dokumen', color: '#d0db41', textColor: '#00282b' },
   { icon: <Camera size={20} />, label: 'Dokumentasi Kegiatan', desc: 'Upload foto & video', href: '/admin/dokumentasi', color: '#01bcce' },
   { icon: <Megaphone size={20} />, label: 'Pengumuman', desc: 'Buat & kelola pengumuman', href: '/admin/pengumuman', color: '#00282b' },
-  { icon: <Building size={20} />, label: 'Profil & Konten', desc: 'Edit halaman profil RSCM', href: '/admin/profil', color: '#d0db41', textColor: '#00282b' },
+  { icon: <Building size={20} />, label: 'Profil & Konten', desc: 'Edit halaman profil Tim Kerja Akuntansi', href: '/admin/profil', color: '#d0db41', textColor: '#00282b' },
   { icon: <Users size={20} />, label: 'Our Teams', desc: 'Kelola anggota tim', href: '/admin/our-teams', color: '#01bcce' },
   { icon: <Settings size={20} />, label: 'Manajemen User', desc: 'Kelola akun admin', href: '/admin/users', color: '#00282b' },
 ]

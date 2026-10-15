@@ -1,0 +1,2438 @@
+'use client'
+import { useState } from 'react'
+import { Building2, Globe2, CheckCircle2, Clock3, TrendingUp, TrendingDown, Minus, ArrowRightLeft, Calendar, BarChart3, FileText } from 'lucide-react'
+
+const NAMA_BULAN = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+]
+
+const BULAN_SINGKAT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+  'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'
+]
+
+/**
+ * Format label periode dan tahun untuk perbandingan, e.g. "Jan – Mar 2026"
+ */
+export function formatBulanDanTahun(selectedMonths: string[], year: number): string {
+  if (!selectedMonths || selectedMonths.length === 0) {
+    return `(Belum pilih bulan) ${year}`
+  }
+  if (selectedMonths.length === 12) {
+    return `Jan – Des ${year}`
+  }
+  const indices = selectedMonths
+    .map(m => NAMA_BULAN.indexOf(m))
+    .filter(idx => idx !== -1)
+    .sort((a, b) => a - b)
+
+  if (indices.length === 0) return `(Belum pilih bulan) ${year}`
+  if (indices.length === 1) return `${BULAN_SINGKAT[indices[0]]} ${year}`
+
+  let isContiguous = true
+  for (let i = 1; i < indices.length; i++) {
+    if (indices[i] !== indices[i - 1] + 1) {
+      isContiguous = false
+      break
+    }
+  }
+
+  if (isContiguous) {
+    return `${BULAN_SINGKAT[indices[0]]} – ${BULAN_SINGKAT[indices[indices.length - 1]]} ${year}`
+  }
+
+  return `${indices.map(i => BULAN_SINGKAT[i]).join(', ')} ${year}`
+}
+
+/**
+ * Format label periode sesuai permintaan:
+ * - 12 Bulan (1 tahun): "Periode Jan – Des"
+ * - 2 Bulan berurutan: "Periode Bulan Jan – Feb"
+ * - Kuartal / Semester berurutan: "Periode Bulan Jan – Mar", "Periode Bulan Jan – Jun"
+ * - 1 Bulan: "Periode Bulan Jan"
+ * - Non-kontigu: "Periode Bulan Jan, Mar, Jul"
+ */
+export function formatPeriodeLabel(selectedMonths: string[]): string {
+  if (!selectedMonths || selectedMonths.length === 0) {
+    return 'Belum ada periode dipilih'
+  }
+
+  // 12 bulan (1 tahun penuh)
+  if (selectedMonths.length === 12) {
+    return 'Periode Jan – Des'
+  }
+
+  // Ambil index bulan dan urutkan
+  const indices = selectedMonths
+    .map(m => NAMA_BULAN.indexOf(m))
+    .filter(idx => idx !== -1)
+    .sort((a, b) => a - b)
+
+  if (indices.length === 0) return 'Belum ada periode dipilih'
+
+  if (indices.length === 1) {
+    return `Periode Bulan ${BULAN_SINGKAT[indices[0]]}`
+  }
+
+  // Cek apakah bulan berurutan (kontigu)
+  let isContiguous = true
+  for (let i = 1; i < indices.length; i++) {
+    if (indices[i] !== indices[i - 1] + 1) {
+      isContiguous = false
+      break
+    }
+  }
+
+  if (isContiguous) {
+    const start = BULAN_SINGKAT[indices[0]]
+    const end = BULAN_SINGKAT[indices[indices.length - 1]]
+    return `Periode Bulan ${start} – ${end}`
+  }
+
+  // Jika tidak berurutan
+  return `Periode Bulan ${indices.map(i => BULAN_SINGKAT[i]).join(', ')}`
+}
+
+interface PieChartProps {
+  proses: number
+  lolos: number
+  title?: string
+  periodeLabel?: string
+  internalCount?: number
+  eksternalCount?: number
+}
+
+export function VerifikasiPieChart({
+  proses,
+  lolos,
+  title,
+  periodeLabel,
+}: PieChartProps) {
+  const [hoveredSlice, setHoveredSlice] = useState<'proses' | 'lolos' | null>(null)
+
+  const total = proses + lolos
+  const lolosPct = total > 0 ? (lolos / total) * 100 : 0
+  const prosesPct = total > 0 ? (proses / total) * 100 : 0
+
+  // Perlebar ketebalan donat agar tulisan & angka di dalamnya sangat jelas
+  const radius = 82
+  const strokeWidth = 48
+  const circumference = Number((2 * Math.PI * radius).toFixed(2)) // ~515.22
+  const lolosStroke = total > 0 ? Number(((lolos / total) * circumference).toFixed(2)) : 0
+  const prosesStroke = total > 0 ? Number(((proses / total) * circumference).toFixed(2)) : 0
+
+  // Hitung sudut tengah masing-masing irisan untuk label langsung di atas irisan
+  const pLolos = total > 0 ? lolos / total : 0
+  const pProses = total > 0 ? proses / total : 0
+
+  // Lolos mulai dari jam 12 (-PI/2)
+  const angleMidLolos = -Math.PI / 2 + Math.PI * pLolos
+  const angleMidProses = -Math.PI / 2 + 2 * Math.PI * pLolos + Math.PI * pProses
+
+  const xLolos = Number((120 + radius * Math.cos(angleMidLolos)).toFixed(2))
+  const yLolos = Number((120 + radius * Math.sin(angleMidLolos)).toFixed(2))
+
+  const xProses = Number((120 + radius * Math.cos(angleMidProses)).toFixed(2))
+  const yProses = Number((120 + radius * Math.sin(angleMidProses)).toFixed(2))
+
+  return (
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-sm flex flex-col justify-between h-full font-nav transition-all">
+      {/* Header & Subtitle Sesuai Format */}
+      <div className="w-full text-center">
+        <h4 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
+          {title || 'Proporsi Dokumen Tagihan'}
+        </h4>
+        <div className="mt-1">
+          <span className="inline-block text-[11px] font-bold text-[#01bcce] bg-[#eef9fa] px-3 py-0.5 rounded-full border border-[#01bcce]/20">
+            {total === 0 ? 'Belum Ada Data' : (periodeLabel || 'Periode Jan – Des')}
+          </span>
+        </div>
+      </div>
+
+      {/* SVG Donut Chart dengan Lebar Donat Diperbesar & Teks Sangat Jelas */}
+      <div className="relative my-auto flex-1 flex items-center justify-center py-2">
+        <svg viewBox="0 0 240 240" className="w-52 h-52 sm:w-60 sm:h-60 md:w-64 md:h-64 overflow-visible">
+          <defs>
+            <filter id="pieGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#00282b" floodOpacity="0.08" />
+            </filter>
+          </defs>
+
+          {/* Group Lingkaran Pie dengan rotasi -90deg */}
+          <g transform="rotate(-90 120 120)">
+            {/* Base background ring */}
+            <circle
+              cx="120"
+              cy="120"
+              r={radius}
+              fill="transparent"
+              stroke="#dbeafe"
+              strokeWidth={strokeWidth}
+            />
+
+            {total === 0 ? (
+              <circle
+                cx="120"
+                cy="120"
+                r={radius}
+                fill="transparent"
+                stroke="#e2e8f0"
+                strokeWidth={strokeWidth}
+              />
+            ) : (
+              <g filter="url(#pieGlow)">
+                {/* 1. Lolos Verifikasi (Teal #268484) */}
+                {lolos > 0 && (
+                  <circle
+                    cx="120"
+                    cy="120"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#268484"
+                    strokeWidth={hoveredSlice === 'lolos' ? strokeWidth + 6 : strokeWidth}
+                    strokeDasharray={`${lolosStroke} ${circumference}`}
+                    strokeDashoffset="0"
+                    className="transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredSlice('lolos')}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                )}
+
+                {/* 2. Proses Verifikasi (Cyan #01bcce) */}
+                {proses > 0 && (
+                  <circle
+                    cx="120"
+                    cy="120"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#01bcce"
+                    strokeWidth={hoveredSlice === 'proses' ? strokeWidth + 6 : strokeWidth}
+                    strokeDasharray={`${prosesStroke} ${circumference}`}
+                    strokeDashoffset={`${-lolosStroke}`}
+                    className="transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredSlice('proses')}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                )}
+              </g>
+            )}
+          </g>
+
+          {/* Label & Angka Langsung di Dalam Irisan Donat (Tulisan Jelas & Tebal) */}
+          {total > 0 && (
+            <>
+              {/* Lolos Verifikasi di Irisan Teal #268484 */}
+              {pLolos >= 0.08 && (
+                <g className="pointer-events-none select-none transition-all">
+                  <text
+                    x={xLolos}
+                    y={yLolos - 4}
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    fontSize="13"
+                    fontWeight="900"
+                    className="drop-shadow"
+                  >
+                    {lolos.toLocaleString('id-ID')}
+                  </text>
+                  <text
+                    x={xLolos}
+                    y={yLolos + 10}
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    opacity="0.95"
+                    fontSize="10.5"
+                    fontWeight="800"
+                  >
+                    {lolosPct.toFixed(1)}%
+                  </text>
+                </g>
+              )}
+
+              {/* Proses Verifikasi di Irisan Cyan #01bcce */}
+              {pProses >= 0.08 && (
+                <g className="pointer-events-none select-none transition-all">
+                  <text
+                    x={xProses}
+                    y={yProses - 4}
+                    textAnchor="middle"
+                    fill="#00282b"
+                    fontSize="13"
+                    fontWeight="900"
+                  >
+                    {proses.toLocaleString('id-ID')}
+                  </text>
+                  <text
+                    x={xProses}
+                    y={yProses + 10}
+                    textAnchor="middle"
+                    fill="#00282b"
+                    opacity="0.9"
+                    fontSize="10.5"
+                    fontWeight="800"
+                  >
+                    {prosesPct.toFixed(1)}%
+                  </text>
+                </g>
+              )}
+            </>
+          )}
+
+          {/* Center Hole: Total Dokumen */}
+          <g className="pointer-events-none select-none text-center">
+            <text
+              x="120"
+              y="107"
+              textAnchor="middle"
+              fill="#94a3b8"
+              fontSize="10"
+              fontWeight="800"
+              letterSpacing="1px"
+            >
+              TOTAL
+            </text>
+            <text
+              x="120"
+              y="129"
+              textAnchor="middle"
+              fill="#268484"
+              fontSize="23"
+              fontWeight="900"
+              letterSpacing="-0.5px"
+            >
+              {total.toLocaleString('id-ID')}
+            </text>
+            <text
+              x="120"
+              y="144"
+              textAnchor="middle"
+              fill="#64748b"
+              fontSize="10"
+              fontWeight="700"
+              letterSpacing="0.5px"
+            >
+              DOKUMEN
+            </text>
+          </g>
+        </svg>
+      </div>
+
+      {/* Legend & Rincian Interaktif Hanya Proses Verifikasi & Lolos Verifikasi */}
+      <div className="w-full space-y-2 pt-3 border-t border-gray-100 font-nav">
+        {/* Lolos Verifikasi */}
+        <div
+          className={`flex items-center justify-between p-1.5 px-2.5 rounded-xl transition-all cursor-pointer ${
+            hoveredSlice === 'lolos'
+              ? 'bg-[#268484]/10 ring-1 ring-[#268484]/30'
+              : 'bg-gray-50/70 hover:bg-gray-50'
+          }`}
+          onMouseEnter={() => setHoveredSlice('lolos')}
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-3.5 h-3.5 rounded-full bg-[#268484] flex-shrink-0 shadow-sm" />
+            <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+              <CheckCircle2 size={13} className="text-[#268484]" />
+              Lolos Verifikasi
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-xs font-black text-[#268484]">
+              {lolos.toLocaleString('id-ID')}
+            </span>
+            <span className="text-[10px] text-gray-400 ml-1.5 font-bold">
+              ({lolosPct.toFixed(1)}%)
+            </span>
+          </div>
+        </div>
+
+        {/* Proses Verifikasi */}
+        <div
+          className={`flex items-center justify-between p-1.5 px-2.5 rounded-xl transition-all cursor-pointer ${
+            hoveredSlice === 'proses'
+              ? 'bg-cyan-50 ring-1 ring-cyan-200'
+              : 'bg-gray-50/70 hover:bg-gray-50'
+          }`}
+          onMouseEnter={() => setHoveredSlice('proses')}
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-3.5 h-3.5 rounded-full bg-[#01bcce] flex-shrink-0 shadow-sm" />
+            <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+              <Clock3 size={13} className="text-[#01bcce]" />
+              Proses Verifikasi
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-xs font-black text-[#01bcce]">
+              {proses.toLocaleString('id-ID')}
+            </span>
+            <span className="text-[10px] text-gray-400 ml-1.5 font-bold">
+              ({prosesPct.toFixed(1)}%)
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export interface LineChartDataPoint {
+  bulan: string
+  bulanSingkat: string
+  jumlah_dokumen: number
+  proses: number
+  lolos: number
+}
+
+interface LineChartProps {
+  data: LineChartDataPoint[]
+  title?: string
+  periodeLabel?: string
+  selectedBulan?: string
+}
+
+export function VerifikasiLineChart({ data, title, periodeLabel, selectedBulan }: LineChartProps) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+
+  // Empty state jika belum ada data bulan yang diinput
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm flex flex-col items-center justify-center h-full min-h-[320px] text-center font-nav">
+        <p className="text-gray-400 font-bold text-sm">Belum ada data dokumen tagihan yang diinput.</p>
+        <p className="text-gray-300 text-xs mt-1">Grafik tren akan muncul setelah ada data bulan yang diinput melalui panel admin.</p>
+      </div>
+    )
+  }
+
+  // Tentukan nilai maksimum untuk sumbu Y
+  const maxVal = Math.max(
+    ...data.flatMap(d => [d.jumlah_dokumen, d.proses, d.lolos]),
+    10
+  )
+  const ceiling = Math.ceil(maxVal * 1.15)
+
+  // Dimensi Chart Diperlebar Sesuai Permintaan
+  const width = 680
+  const height = 360
+  const padLeft = 56 // Ruang cukup untuk label angka di kiri
+  const padRight = 24
+  const padTop = 28
+  const padBottom = 44
+
+  const n = data.length
+  const plotHeight = height - padTop - padBottom
+
+  // Batasi jarak antar titik ketika bulan yang dipilih sedikit (misal 2 atau 3 bulan)
+  // agar tidak menempel di ujung kiri dan ujung kanan chart
+  const availableWidth = width - padLeft - padRight
+  const baseMargin = 32 // Margin minimum dari batas kiri dan kanan
+  const maxAllowedSpan = availableWidth - 2 * baseMargin
+
+  // Jarak antar titik diperlebar
+  const stepX = n <= 1 ? 0 : Math.min(220, maxAllowedSpan / (n - 1))
+  const totalSpan = n <= 1 ? 0 : (n - 1) * stepX
+  const startX = padLeft + (availableWidth - totalSpan) / 2
+
+  const getX = (i: number) => {
+    if (n <= 1) return Number((padLeft + availableWidth / 2).toFixed(2))
+    return Number((startX + i * stepX).toFixed(2))
+  }
+
+  const getY = (val: number) => Number((padTop + plotHeight - (val / ceiling) * plotHeight).toFixed(2))
+
+  // Garis Biasa Lurus (Straight Polyline, Tidak Meliuk-liuk)
+  const makeStraightPath = (key: 'jumlah_dokumen' | 'proses' | 'lolos') => {
+    if (n <= 0) return ''
+    return data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d[key])}`).join(' ')
+  }
+
+  // Area lurus di bawah garis
+  const makeStraightAreaPath = (key: 'jumlah_dokumen' | 'proses' | 'lolos') => {
+    if (n <= 1) return ''
+    const linePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d[key])}`).join(' ')
+    const bottomY = padTop + plotHeight
+    return `${linePath} L ${getX(n - 1)} ${bottomY} L ${getX(0)} ${bottomY} Z`
+  }
+
+  // Grid horizontal ticks (4 garis)
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(r => Math.round(ceiling * r))
+
+  const activeIndex = hoveredIdx !== null
+    ? hoveredIdx
+    : selectedBulan
+    ? data.findIndex(d => d.bulan.toLowerCase() === selectedBulan.toLowerCase())
+    : null
+
+  const hoveredData = activeIndex !== null && activeIndex >= 0 ? data[activeIndex] : null
+
+  return (
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-sm flex flex-col justify-between h-full font-nav transition-all">
+      <div className="flex-1 flex flex-col justify-between">
+        {/* 1. Header & Judul Berada di Tengah Sesuai Permintaan */}
+        <div className="w-full text-center mb-1">
+          <h4 className="font-nav font-black text-base text-[#00282b] leading-tight">
+            {title || 'Tren Dokumen Tagihan'}
+          </h4>
+          <div className="mt-1">
+            <span className="inline-block text-xs font-bold text-[#01bcce] bg-[#eef9fa] px-3.5 py-0.5 rounded-full border border-[#01bcce]/20">
+              {periodeLabel || 'Periode Jan – Des'}
+            </span>
+          </div>
+        </div>
+
+        {/* 3. SVG Line Chart Diperbesar & Garis Lurus Bersih */}
+        <div className="relative w-full overflow-hidden select-none my-auto flex-1 flex items-center justify-center py-2">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
+            <defs>
+              {/* Gradients halus untuk area fill */}
+              <linearGradient id="areaStraightGradJumlah" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#268484" stopOpacity="0.08" />
+                <stop offset="100%" stopColor="#268484" stopOpacity="0.0" />
+              </linearGradient>
+              <linearGradient id="areaStraightGradLolos" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#d0db41" stopOpacity="0.12" />
+                <stop offset="100%" stopColor="#d0db41" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+
+            {/* Grid horizontal & Tick angka pada Sumbu Y */}
+            {ticks.map((t, idx) => {
+              const y = getY(t)
+              return (
+                <g key={idx}>
+                  <line
+                    x1={padLeft}
+                    y1={y}
+                    x2={width - padRight}
+                    y2={y}
+                    stroke="#dbeafe"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                  />
+                  <text
+                    x={padLeft - 10}
+                    y={y + 3.5}
+                    textAnchor="end"
+                    fill="#94a3b8"
+                    fontSize="10"
+                    fontWeight="700"
+                  >
+                    {t.toLocaleString('id-ID')}
+                  </text>
+                </g>
+              )
+            })}
+
+            {/* Area fill lurus */}
+            <path d={makeStraightAreaPath('jumlah_dokumen')} fill="url(#areaStraightGradJumlah)" />
+            <path d={makeStraightAreaPath('lolos')} fill="url(#areaStraightGradLolos)" />
+
+            {/* Garis Lurus Bersih (Straight Polylines) */}
+            {/* 1. Garis Jumlah Dokumen (Dark Teal #268484) */}
+            <path
+              d={makeStraightPath('jumlah_dokumen')}
+              fill="none"
+              stroke="#268484"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {/* 2. Garis Lolos Verifikasi (Lime #d0db41) */}
+            <path
+              d={makeStraightPath('lolos')}
+              fill="none"
+              stroke="#d0db41"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {/* 3. Garis Proses Verifikasi (Cyan #01bcce Dashed) */}
+            <path
+              d={makeStraightPath('proses')}
+              fill="none"
+              stroke="#01bcce"
+              strokeWidth="2.4"
+              strokeDasharray="5 4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {/* Garis Vertikal Penunjuk saat Titik Diarahkan (Hover Guide) */}
+            {activeIndex !== null && (
+              <line
+                x1={getX(activeIndex)}
+                y1={padTop}
+                x2={getX(activeIndex)}
+                y2={padTop + plotHeight}
+                stroke="#01bcce"
+                strokeWidth="1.5"
+                strokeDasharray="4 3"
+                opacity="0.8"
+              />
+            )}
+
+            {/* Data Points, X-Axis labels, and Interactive Hover Columns */}
+            {data.map((d, i) => {
+              const x = getX(i)
+              const yJumlah = getY(d.jumlah_dokumen)
+              const yProses = getY(d.proses)
+              const yLolos = getY(d.lolos)
+              const isHovered = activeIndex === i
+
+              return (
+                <g key={i}>
+                  {/* Highlight capsule background saat di-hover */}
+                  {isHovered && (
+                    <rect
+                      x={x - 18}
+                      y={padTop}
+                      width={36}
+                      height={plotHeight}
+                      fill="#eef9fa"
+                      rx="8"
+                      opacity="0.6"
+                    />
+                  )}
+
+                  {/* Label Nama Bulan pada Sumbu X (Jan sudah digeser rapi dari sumbu Y) */}
+                  <text
+                    x={x}
+                    y={height - 12}
+                    textAnchor="middle"
+                    fill={isHovered ? '#01bcce' : '#64748b'}
+                    fontSize="11"
+                    fontWeight={isHovered ? '800' : '600'}
+                  >
+                    {d.bulanSingkat}
+                  </text>
+
+                  {/* Titik Jumlah Dokumen */}
+                  {isHovered && (
+                    <circle cx={x} cy={yJumlah} r={7} fill="#268484" opacity="0.25" />
+                  )}
+                  <circle
+                    cx={x}
+                    cy={yJumlah}
+                    r={isHovered ? 5.5 : 4}
+                    fill="#268484"
+                    stroke="#ffffff"
+                    strokeWidth="2.5"
+                  />
+
+                  {/* Titik Lolos Verifikasi */}
+                  {isHovered && (
+                    <circle cx={x} cy={yLolos} r={7} fill="#d0db41" opacity="0.25" />
+                  )}
+                  <circle
+                    cx={x}
+                    cy={yLolos}
+                    r={isHovered ? 5.5 : 4}
+                    fill="#d0db41"
+                    stroke="#268484"
+                    strokeWidth="2"
+                  />
+
+                  {/* Titik Proses Verifikasi */}
+                  {isHovered && (
+                    <circle cx={x} cy={yProses} r={7} fill="#01bcce" opacity="0.25" />
+                  )}
+                  <circle
+                    cx={x}
+                    cy={yProses}
+                    r={isHovered ? 5.5 : 4}
+                    fill="#01bcce"
+                    stroke="#ffffff"
+                    strokeWidth="2.5"
+                  />
+
+                  {/* Invisible Hit Area Column untuk hover responsif dan mudah */}
+                  <rect
+                    x={x - (n > 1 ? stepX / 2 : 30)}
+                    y={padTop}
+                    width={n > 1 ? stepX : 60}
+                    height={plotHeight + 20}
+                    fill="transparent"
+                    className="cursor-pointer"
+                    onMouseEnter={() => setHoveredIdx(i)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                    onClick={() => setHoveredIdx(hoveredIdx === i ? null : i)}
+                  />
+                </g>
+              )
+            })}
+          </svg>
+
+          {/* Floating Vertical List Card (List ke bawah tanpa menutupi titik) */}
+          {hoveredData && activeIndex !== null && (
+            <div
+              className="absolute z-20 pointer-events-none transition-all duration-150 ease-out"
+              style={{
+                left: `${(getX(activeIndex) / width) * 100}%`,
+                top: '16px',
+                transform:
+                  getX(activeIndex) > width * 0.52
+                    ? 'translateX(calc(-100% - 18px))'
+                    : 'translateX(18px)',
+              }}
+            >
+              <div className="bg-[#00282b]/95 backdrop-blur-md text-white rounded-xl px-4 py-3 shadow-2xl border border-[#01bcce]/30 min-w-[175px]">
+                <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/10">
+                  <span className="font-black text-xs text-[#d0db41]">
+                    {hoveredData.bulan}
+                  </span>
+                  <span className="text-[10px] text-gray-300 font-bold bg-white/10 px-1.5 py-0.5 rounded">
+                    {hoveredData.bulanSingkat}
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-xs font-nav">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-300 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#268484] inline-block shadow-sm" />
+                      Jumlah Dokumen:
+                    </span>
+                    <span className="font-black text-white">
+                      {hoveredData.jumlah_dokumen.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-lime-300 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#d0db41] inline-block shadow-sm" />
+                      Lolos:
+                    </span>
+                    <span className="font-black text-[#d0db41]">
+                      {hoveredData.lolos.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-cyan-300 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#01bcce] inline-block shadow-sm" />
+                      Proses:
+                    </span>
+                    <span className="font-black text-[#01bcce]">
+                      {hoveredData.proses.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4. Legend Diletakkan di Bawah Sesuai Permintaan */}
+      <div className="flex items-center justify-center gap-3 sm:gap-4 text-xs font-bold flex-wrap pt-3 mt-2 border-t border-gray-100 font-nav">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50/70 border border-[#268484]/20 text-[#268484]">
+          <span className="w-3 h-3 rounded-full bg-[#268484]" />
+          <span>Jumlah Dokumen</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lime-50/70 border border-[#d0db41]/30 text-lime-800">
+          <span className="w-3 h-3 rounded-full bg-[#d0db41]" />
+          <span>Lolos Verifikasi</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50/70 border border-cyan-100 text-[#01bcce]">
+          <span className="w-3 h-3 rounded-full bg-[#01bcce]" />
+          <span>Proses Verifikasi</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export interface ComparisonMonthlyItem {
+  bulan: string
+  bulanSingkat: string
+  valA: number
+  valB: number
+  isIncludedA: boolean
+  isIncludedB: boolean
+}
+
+export interface VerifikasiBarChartProps {
+  title?: string
+  labelA: string
+  totalA: number
+  labelB: string
+  totalB: number
+  items?: ComparisonMonthlyItem[]
+  colorA?: string
+  colorB?: string
+}
+
+export function VerifikasiBarChart({
+  title,
+  labelA,
+  totalA,
+  labelB,
+  totalB,
+  items = [],
+  colorA = '#01bcce',
+  colorB = '#268484',
+}: VerifikasiBarChartProps) {
+  const [, setHoveredBar] = useState<{ label: string; period: string; val: number } | null>(null)
+
+  // Empty state jika kedua total = 0
+  if (totalA === 0 && totalB === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex flex-col items-center justify-center min-h-[190px] text-center font-nav">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-[#eef9fa] text-[#01bcce]">
+          <BarChart3 size={20} />
+        </div>
+        {title && <h4 className="font-black text-sm text-[#00282b]">{title}</h4>}
+        <p className="text-gray-400 font-bold text-xs mt-1">Belum ada data dokumen tagihan yang diinput pada periode yang dibandingkan.</p>
+        <p className="text-gray-400 text-[11px] mt-0.5">Diagram batang perbandingan akan tampil otomatis setelah ada data yang diinput.</p>
+      </div>
+    )
+  }
+
+  const diff = totalB - totalA
+  const diffPct = totalA > 0 ? (diff / totalA) * 100 : (totalB > 0 ? 100 : 0)
+
+  // Dimensi Chart Diperlebar Sesuai Permintaan
+  const width = 600
+  const height = 240
+  const padLeft = 48
+  const padRight = 16
+  const padTop = 18
+  const padBottom = 34
+  const plotWidth = width - padLeft - padRight // 536
+  const plotHeight = height - padTop - padBottom // 188
+
+  // Hitung nilai maksimum
+  const maxVal = Math.max(
+    totalA,
+    totalB,
+    ...items.flatMap(i => [i.valA, i.valB]),
+    10
+  )
+  const ceiling = Math.ceil(maxVal * 1.25)
+
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(r => Math.round(ceiling * r))
+
+  const getY = (val: number) => Number((padTop + plotHeight - (val / ceiling) * plotHeight).toFixed(2))
+  const getH = (val: number) => Number(((val / ceiling) * plotHeight).toFixed(2))
+
+  // Menentukan layout grup batang (diperlebar)
+  const hasMultipleMonths = items.length > 1
+  const numGroups = hasMultipleMonths ? items.length + 1 : 1 // items + TOTAL
+  const groupWidth = Number((plotWidth / numGroups).toFixed(2))
+  const barWidth = hasMultipleMonths ? Math.min(24, Math.max(10, Number(((groupWidth - 12) / 2).toFixed(2)))) : 48
+
+  return (
+    <div className="bg-white rounded-2xl p-2.5 sm:p-3 border border-gray-200 shadow-sm flex flex-col justify-between h-full font-nav transition-all">
+      {/* Tren Badge (Jika ada selisih) */}
+      {diff !== 0 && (
+        <div className="w-full flex items-center justify-end pb-1">
+          {diff > 0 ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              <TrendingUp size={11} />
+              +{diff.toLocaleString('id-ID')} ({diffPct > 0 ? `+${diffPct.toFixed(1)}%` : '0%'})
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] font-black text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+              <TrendingDown size={11} />
+              {diff.toLocaleString('id-ID')} ({diffPct.toFixed(1)}%)
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* SVG Bar Chart */}
+      <div className="relative my-auto flex-1 flex items-center justify-center py-1">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible" style={{ maxHeight: 250 }}>
+          {/* Grid lines horizontal */}
+          {ticks.map((t) => {
+            const y = getY(t)
+            return (
+              <g key={t}>
+                <line
+                  x1={padLeft}
+                  y1={y}
+                  x2={width - padRight}
+                  y2={y}
+                  stroke="#dbeafe"
+                  strokeWidth="1"
+                  strokeDasharray={t === 0 ? 'none' : '3 3'}
+                />
+                <text
+                  x={padLeft - 8}
+                  y={y + 3.5}
+                  textAnchor="end"
+                  fill="#94a3b8"
+                  fontSize="9.5"
+                  fontWeight="700"
+                >
+                  {t.toLocaleString('id-ID')}
+                </text>
+              </g>
+            )
+          })}
+
+          {/* Sumbu X dasar */}
+          <line
+            x1={padLeft}
+            y1={padTop + plotHeight}
+            x2={width - padRight}
+            y2={padTop + plotHeight}
+            stroke="#cbd5e1"
+            strokeWidth="1.5"
+          />
+
+          {/* Batang-batang */}
+          {hasMultipleMonths ? (
+            <>
+              {/* Grup Bulan */}
+              {items.map((item, idx) => {
+                const groupCenterX = Number((padLeft + idx * groupWidth + groupWidth / 2).toFixed(2))
+                const barAX = Number((groupCenterX - barWidth - 1.5).toFixed(2))
+                const barBX = Number((groupCenterX + 1.5).toFixed(2))
+
+                const hA = getH(item.valA)
+                const yA = getY(item.valA)
+                const hB = getH(item.valB)
+                const yB = getY(item.valB)
+
+                return (
+                  <g key={item.bulan}>
+                    {/* Batang A (Periode 1) */}
+                    <rect
+                      x={barAX}
+                      y={yA}
+                      width={barWidth}
+                      height={hA}
+                      fill={colorA}
+                      rx="3"
+                      className="cursor-pointer transition-all duration-200 hover:opacity-85"
+                      onMouseEnter={() => setHoveredBar({ label: item.bulan, period: labelA, val: item.valA })}
+                      onMouseLeave={() => setHoveredBar(null)}
+                    />
+                    {item.valA > 0 && (
+                      <text
+                        x={Number((barAX + barWidth / 2).toFixed(2))}
+                        y={yA - 4}
+                        textAnchor="middle"
+                        fill="#00282b"
+                        fontSize="9"
+                        fontWeight="800"
+                      >
+                        {item.valA.toLocaleString('id-ID')}
+                      </text>
+                    )}
+
+                    {/* Batang B (Periode 2) */}
+                    <rect
+                      x={barBX}
+                      y={yB}
+                      width={barWidth}
+                      height={hB}
+                      fill={colorB}
+                      rx="3"
+                      className="cursor-pointer transition-all duration-200 hover:opacity-85"
+                      onMouseEnter={() => setHoveredBar({ label: item.bulan, period: labelB, val: item.valB })}
+                      onMouseLeave={() => setHoveredBar(null)}
+                    />
+                    {item.valB > 0 && (
+                      <text
+                        x={Number((barBX + barWidth / 2).toFixed(2))}
+                        y={yB - 4}
+                        textAnchor="middle"
+                        fill="#00282b"
+                        fontSize="9"
+                        fontWeight="800"
+                      >
+                        {item.valB.toLocaleString('id-ID')}
+                      </text>
+                    )}
+
+                    {/* Label Bulan */}
+                    <text
+                      x={groupCenterX}
+                      y={padTop + plotHeight + 16}
+                      textAnchor="middle"
+                      fill="#64748b"
+                      fontSize="10"
+                      fontWeight="700"
+                    >
+                      {item.bulanSingkat}
+                    </text>
+                  </g>
+                )
+              })}
+
+              {/* Separator Garis Vertikal sebelum grup Total */}
+              {(() => {
+                const sepX = Number((padLeft + items.length * groupWidth).toFixed(2))
+                return (
+                  <line
+                    x1={sepX}
+                    y1={padTop}
+                    x2={sepX}
+                    y2={padTop + plotHeight}
+                    stroke="#cbd5e1"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 3"
+                  />
+                )
+              })()}
+
+              {/* Grup TOTAL */}
+              {(() => {
+                const idx = items.length
+                const groupCenterX = Number((padLeft + idx * groupWidth + groupWidth / 2).toFixed(2))
+                const barAX = Number((groupCenterX - barWidth - 1.5).toFixed(2))
+                const barBX = Number((groupCenterX + 1.5).toFixed(2))
+
+                const hA = getH(totalA)
+                const yA = getY(totalA)
+                const hB = getH(totalB)
+                const yB = getY(totalB)
+
+                return (
+                  <g>
+                    {/* Background Highlight Grup Total */}
+                    <rect
+                      x={Number((padLeft + idx * groupWidth + 2).toFixed(2))}
+                      y={padTop}
+                      width={Number((groupWidth - 4).toFixed(2))}
+                      height={plotHeight}
+                      fill="#f8fafc"
+                      rx="4"
+                      opacity="0.6"
+                    />
+
+                    {/* Batang Total A */}
+                    <rect
+                      x={barAX}
+                      y={yA}
+                      width={barWidth}
+                      height={hA}
+                      fill={colorA}
+                      rx="3"
+                      className="cursor-pointer transition-all duration-200 hover:opacity-85"
+                      onMouseEnter={() => setHoveredBar({ label: 'Total', period: labelA, val: totalA })}
+                      onMouseLeave={() => setHoveredBar(null)}
+                    />
+                    {totalA > 0 && (
+                      <text
+                        x={Number((barAX + barWidth / 2).toFixed(2))}
+                        y={yA - 4}
+                        textAnchor="middle"
+                        fill="#01bcce"
+                        fontSize="9.5"
+                        fontWeight="900"
+                      >
+                        {totalA.toLocaleString('id-ID')}
+                      </text>
+                    )}
+
+                    {/* Batang Total B */}
+                    <rect
+                      x={barBX}
+                      y={yB}
+                      width={barWidth}
+                      height={hB}
+                      fill={colorB}
+                      rx="3"
+                      className="cursor-pointer transition-all duration-200 hover:opacity-85"
+                      onMouseEnter={() => setHoveredBar({ label: 'Total', period: labelB, val: totalB })}
+                      onMouseLeave={() => setHoveredBar(null)}
+                    />
+                    {totalB > 0 && (
+                      <text
+                        x={Number((barBX + barWidth / 2).toFixed(2))}
+                        y={yB - 4}
+                        textAnchor="middle"
+                        fill="#00282b"
+                        fontSize="9.5"
+                        fontWeight="900"
+                      >
+                        {totalB.toLocaleString('id-ID')}
+                      </text>
+                    )}
+
+                    {/* Label TOTAL */}
+                    <text
+                      x={groupCenterX}
+                      y={padTop + plotHeight + 16}
+                      textAnchor="middle"
+                      fill="#00282b"
+                      fontSize="10"
+                      fontWeight="900"
+                    >
+                      TOTAL
+                    </text>
+                  </g>
+                )
+              })()}
+            </>
+          ) : (
+            /* Mode 1 Bulan */
+            (() => {
+              const center1 = Number((padLeft + plotWidth * 0.35).toFixed(2))
+              const center2 = Number((padLeft + plotWidth * 0.65).toFixed(2))
+              const bWidth = 54
+
+              const hA = getH(totalA)
+              const yA = getY(totalA)
+              const hB = getH(totalB)
+              const yB = getY(totalB)
+
+              return (
+                <g>
+                  {/* Batang A */}
+                  <rect
+                    x={Number((center1 - bWidth / 2).toFixed(2))}
+                    y={yA}
+                    width={bWidth}
+                    height={hA}
+                    fill={colorA}
+                    rx="4"
+                    className="cursor-pointer transition-all duration-200 hover:opacity-85"
+                    onMouseEnter={() => setHoveredBar({ label: 'Dokumen', period: labelA, val: totalA })}
+                    onMouseLeave={() => setHoveredBar(null)}
+                  />
+                  {totalA > 0 && (
+                    <text
+                      x={center1}
+                      y={yA - 6}
+                      textAnchor="middle"
+                      fill="#01bcce"
+                      fontSize="12"
+                      fontWeight="900"
+                    >
+                      {totalA.toLocaleString('id-ID')}
+                    </text>
+                  )}
+                  <text
+                    x={center1}
+                    y={padTop + plotHeight + 18}
+                    textAnchor="middle"
+                    fill="#00282b"
+                    fontSize="11"
+                    fontWeight="800"
+                  >
+                    {labelA}
+                  </text>
+
+                  {/* Batang B */}
+                  <rect
+                    x={Number((center2 - bWidth / 2).toFixed(2))}
+                    y={yB}
+                    width={bWidth}
+                    height={hB}
+                    fill={colorB}
+                    rx="4"
+                    className="cursor-pointer transition-all duration-200 hover:opacity-85"
+                    onMouseEnter={() => setHoveredBar({ label: 'Dokumen', period: labelB, val: totalB })}
+                    onMouseLeave={() => setHoveredBar(null)}
+                  />
+                  {totalB > 0 && (
+                    <text
+                      x={center2}
+                      y={yB - 6}
+                      textAnchor="middle"
+                      fill="#00282b"
+                      fontSize="12"
+                      fontWeight="900"
+                    >
+                      {totalB.toLocaleString('id-ID')}
+                    </text>
+                  )}
+                  <text
+                    x={center2}
+                    y={padTop + plotHeight + 18}
+                    textAnchor="middle"
+                    fill="#00282b"
+                    fontSize="11"
+                    fontWeight="800"
+                  >
+                    {labelB}
+                  </text>
+                </g>
+              )
+            })()
+          )}
+        </svg>
+      </div>
+
+      {/* Legend Batang di Bawah */}
+      <div className="flex items-center justify-center gap-4 text-xs font-bold flex-wrap pt-3 mt-1 border-t border-gray-100 font-nav">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-50/70 border border-cyan-100 text-[#00282b]">
+          <span className="w-3.5 h-3.5 rounded-md shadow-xs" style={{ background: colorA }} />
+          <span>{labelA}: <strong className="text-[#01bcce]">{totalA.toLocaleString('id-ID')}</strong> Dok</span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-[#00282b]">
+          <span className="w-3.5 h-3.5 rounded-md shadow-xs" style={{ background: colorB }} />
+          <span>{labelB}: <strong className="text-[#00282b]">{totalB.toLocaleString('id-ID')}</strong> Dok</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =========================================================================
+// ========================== SLA CHARTS SECTION ===========================
+// =========================================================================
+
+export interface SlaLineChartDataPoint {
+  bulan: string
+  bulanSingkat: string
+  internal: number
+  eksternal: number
+  keseluruhan: number
+}
+
+interface SlaLineChartProps {
+  data: SlaLineChartDataPoint[]
+  title?: string
+  periodeLabel?: string
+}
+
+export function SlaLineChart({ data, title, periodeLabel }: SlaLineChartProps) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm flex flex-col items-center justify-center min-h-[260px] text-center font-nav">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-[#eef9fa] text-[#01bcce]">
+          <BarChart3 size={20} />
+        </div>
+        <p className="text-gray-400 font-bold text-sm">Belum ada data capaian SLA yang diinput.</p>
+        <p className="text-gray-300 text-xs mt-1">Grafik tren akan tampil otomatis setelah ada data bulan yang diinput.</p>
+      </div>
+    )
+  }
+
+  const width = 760
+  const height = 250
+  const padLeft = 56
+  const padRight = 28
+  const padTop = 22
+  const padBottom = 38
+
+  const plotWidth = width - padLeft - padRight
+  const plotHeight = height - padTop - padBottom
+  const n = data.length
+
+  // Sumbu Y persentase 0 - 100%
+  const ceiling = 100
+  const ticks = [0, 25, 50, 75, 100]
+
+  const baseMargin = 28
+  const maxAllowedSpan = plotWidth - 2 * baseMargin
+  const stepX = n <= 1 ? 0 : Math.min(200, maxAllowedSpan / (n - 1))
+  const totalSpan = n <= 1 ? 0 : (n - 1) * stepX
+  const startX = padLeft + (plotWidth - totalSpan) / 2
+
+  const getX = (i: number) => {
+    if (n <= 1) return Number((padLeft + plotWidth / 2).toFixed(2))
+    return Number((startX + i * stepX).toFixed(2))
+  }
+
+  const getY = (val: number) => {
+    const clamped = Math.max(0, Math.min(100, val))
+    return Number((padTop + plotHeight - (clamped / ceiling) * plotHeight).toFixed(2))
+  }
+
+  const makePath = (key: 'internal' | 'eksternal' | 'keseluruhan') => {
+    if (n <= 0) return ''
+    return data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d[key])}`).join(' ')
+  }
+
+  const activeIndex = hoveredIdx !== null ? hoveredIdx : null
+  const hoveredData = activeIndex !== null && activeIndex >= 0 ? data[activeIndex] : null
+
+  return (
+    <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200 shadow-sm flex flex-col justify-between h-full font-nav transition-all">
+      {/* Header & Judul */}
+      <div className="w-full text-center mb-0.5">
+        <h4 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
+          {title || 'Tren Capaian SLA'}
+        </h4>
+        <div className="mt-0.5">
+          <span className="inline-block text-[11px] font-bold text-[#01bcce] bg-[#eef9fa] px-3 py-0.5 rounded-full border border-[#01bcce]/20">
+            {periodeLabel || 'Periode Jan – Des'}
+          </span>
+        </div>
+      </div>
+
+      {/* SVG Multi-Line Chart (Tinggi Diperpendek Sesuai Permintaan) */}
+      <div className="relative my-auto flex-1 flex items-center justify-center py-1">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible" style={{ maxHeight: 250 }}>
+          {/* Grid lines horizontal */}
+          {ticks.map((t) => {
+            const y = getY(t)
+            return (
+              <g key={t}>
+                <line
+                  x1={padLeft}
+                  y1={y}
+                  x2={width - padRight}
+                  y2={y}
+                  stroke="#dbeafe"
+                  strokeWidth="1"
+                  strokeDasharray={t === 0 || t === 100 ? 'none' : '3 3'}
+                />
+                <text
+                  x={padLeft - 8}
+                  y={y + 3.5}
+                  textAnchor="end"
+                  fill="#94a3b8"
+                  fontSize="10"
+                  fontWeight="700"
+                >
+                  {t}%
+                </text>
+              </g>
+            )
+          })}
+
+          {/* Sumbu X dasar */}
+          <line
+            x1={padLeft}
+            y1={padTop + plotHeight}
+            x2={width - padRight}
+            y2={padTop + plotHeight}
+            stroke="#cbd5e1"
+            strokeWidth="1.5"
+          />
+
+          {/* Garis Vertikal Hover */}
+          {activeIndex !== null && (
+            <line
+              x1={getX(activeIndex)}
+              y1={padTop}
+              x2={getX(activeIndex)}
+              y2={padTop + plotHeight}
+              stroke="#01bcce"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+              opacity="0.8"
+            />
+          )}
+
+          {/* 1. Line Keseluruhan (Lime/Gold with border #00282b) */}
+          <path
+            d={makePath('keseluruhan')}
+            fill="none"
+            stroke="#d0db41"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="drop-shadow-xs"
+          />
+
+          {/* 2. Line Internal (Cyan) */}
+          <path
+            d={makePath('internal')}
+            fill="none"
+            stroke="#01bcce"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* 3. Line Eksternal (Dark Teal #268484) */}
+          <path
+            d={makePath('eksternal')}
+            fill="none"
+            stroke="#268484"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Titik-titik Data & Label Sumbu X */}
+          {data.map((d, i) => {
+            const x = getX(i)
+            const yInt = getY(d.internal)
+            const yEks = getY(d.eksternal)
+            const yAll = getY(d.keseluruhan)
+            const isHovered = activeIndex === i
+
+            return (
+              <g key={d.bulan}>
+                {/* Hit area untuk hover */}
+                <rect
+                  x={x - (stepX > 0 ? stepX / 2 : 25)}
+                  y={padTop}
+                  width={stepX > 0 ? stepX : 50}
+                  height={plotHeight}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredIdx(i)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  onClick={() => setHoveredIdx(hoveredIdx === i ? null : i)}
+                />
+
+                {/* Dot Internal */}
+                <circle
+                  cx={x}
+                  cy={yInt}
+                  r={isHovered ? 6 : 4}
+                  fill="#01bcce"
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                  className="transition-all pointer-events-none"
+                />
+
+                {/* Dot Eksternal */}
+                <circle
+                  cx={x}
+                  cy={yEks}
+                  r={isHovered ? 6 : 4}
+                  fill="#268484"
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                  className="transition-all pointer-events-none"
+                />
+
+                {/* Dot Keseluruhan */}
+                <circle
+                  cx={x}
+                  cy={yAll}
+                  r={isHovered ? 6.5 : 4.5}
+                  fill="#d0db41"
+                  stroke="#268484"
+                  strokeWidth="1.5"
+                  className="transition-all pointer-events-none"
+                />
+
+                {/* Label Bulan pada Sumbu X */}
+                <text
+                  x={x}
+                  y={padTop + plotHeight + 17}
+                  textAnchor="middle"
+                  fill={isHovered ? '#00282b' : '#64748b'}
+                  fontSize={n > 8 ? '9.5' : '11'}
+                  fontWeight={isHovered ? '900' : '700'}
+                >
+                  {n > 8 ? d.bulanSingkat : d.bulan}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+
+        {/* Floating Vertical List Card (Toggle kecil seperti di Dokumen Tagihan) */}
+        {hoveredData && activeIndex !== null && (
+          <div
+            className="absolute z-20 pointer-events-none transition-all duration-150 ease-out"
+            style={{
+              left: `${(getX(activeIndex) / width) * 100}%`,
+              top: '12px',
+              transform:
+                getX(activeIndex) > width * 0.52
+                  ? 'translateX(calc(-100% - 18px))'
+                  : 'translateX(18px)',
+            }}
+          >
+            <div className="bg-[#00282b]/95 backdrop-blur-md text-white rounded-xl px-4 py-2.5 shadow-2xl border border-[#01bcce]/30 min-w-[170px]">
+              <div className="flex items-center justify-between pb-1 mb-1.5 border-b border-white/10">
+                <span className="font-black text-xs text-[#d0db41]">
+                  {hoveredData.bulan}
+                </span>
+                <span className="text-[10px] text-gray-300 font-bold bg-white/10 px-1.5 py-0.5 rounded">
+                  {hoveredData.bulanSingkat}
+                </span>
+              </div>
+              <div className="space-y-1 text-xs font-nav">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-cyan-300 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#01bcce] inline-block shadow-xs" />
+                    Internal:
+                  </span>
+                  <span className="font-black text-[#01bcce]">
+                    {hoveredData.internal.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-teal-200 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#268484] border border-white inline-block shadow-xs" />
+                    Eksternal:
+                  </span>
+                  <span className="font-black text-white">
+                    {hoveredData.eksternal.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[#d0db41] flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#d0db41] inline-block shadow-xs" />
+                    Keseluruhan:
+                  </span>
+                  <span className="font-black text-[#d0db41]">
+                    {hoveredData.keseluruhan.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Legend Garis di Bawah */}
+      <div className="flex items-center justify-center gap-3 sm:gap-5 text-xs font-bold flex-wrap pt-2.5 border-t border-gray-100 font-nav">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-50/70 border border-cyan-100 text-[#00282b]">
+          <span className="w-3 h-1 rounded-full bg-[#01bcce]" />
+          <span>Internal</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50/70 border border-[#268484]/20 text-[#268484]">
+          <span className="w-3 h-1 rounded-full bg-[#268484]" />
+          <span>Eksternal</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#fafcd2]/60 border border-[#d0db41]/60 text-lime-900">
+          <span className="w-3 h-1 rounded-full bg-[#d0db41] border border-[#268484]/30" />
+          <span>Keseluruhan</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface SlaPieChartProps {
+  rataInternal: number
+  rataEksternal: number
+  rataKeseluruhan: number
+  periodeLabel?: string
+  title?: string
+}
+
+export function SlaPieChart({
+  rataInternal,
+  rataEksternal,
+  rataKeseluruhan,
+  periodeLabel,
+  title,
+}: SlaPieChartProps) {
+  const [hoveredSlice, setHoveredSlice] = useState<'internal' | 'eksternal' | null>(null)
+
+  const hasData = rataKeseluruhan > 0 || rataInternal > 0 || rataEksternal > 0
+  const total = (rataInternal || 0) + (rataEksternal || 0)
+  const pInternal = total > 0 ? (rataInternal || 0) / total : 0.5
+  const pEksternal = total > 0 ? (rataEksternal || 0) / total : 0.5
+
+  // Lebar bulatan (ketebalan cincin) dipertahankan tebal (48px) agar tulisan tetap tercover seluruhnya,
+  // sementara radius dan kanvas diperkecil agar tinggi chart lebih pendek & proporsional
+  const radius = 76
+  const strokeWidth = 48
+  const circumference = 2 * Math.PI * radius
+
+  const internalStroke = pInternal * circumference
+  const eksternalStroke = pEksternal * circumference
+
+  // Posisi teks di dalam irisan donat (pusat 110, 110)
+  const angleMidInternal = -Math.PI / 2 + Math.PI * pInternal
+  const xInternal = Number((110 + radius * Math.cos(angleMidInternal)).toFixed(2))
+  const yInternal = Number((110 + radius * Math.sin(angleMidInternal)).toFixed(2))
+
+  const angleMidEksternal = -Math.PI / 2 + 2 * Math.PI * pInternal + Math.PI * pEksternal
+  const xEksternal = Number((110 + radius * Math.cos(angleMidEksternal)).toFixed(2))
+  const yEksternal = Number((110 + radius * Math.sin(angleMidEksternal)).toFixed(2))
+
+  return (
+    <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200 shadow-sm flex flex-col justify-between h-full font-nav transition-all">
+      {/* Header & Subtitle */}
+      <div className="w-full text-center mb-0.5">
+        <h4 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
+          {title || 'Proporsi Capaian SLA'}
+        </h4>
+        <div className="mt-0.5">
+          <span className="inline-block text-[11px] font-bold text-[#01bcce] bg-[#eef9fa] px-3 py-0.5 rounded-full border border-[#01bcce]/20">
+            {!hasData ? 'Belum Ada Data' : (periodeLabel || 'Periode Jan – Des')}
+          </span>
+        </div>
+      </div>
+
+      {/* SVG Donut Chart dengan Ukuran Proporsional & Tinggi Lebih Pendek */}
+      <div className="relative my-auto flex-1 flex items-center justify-center py-1">
+        <svg viewBox="0 0 220 220" className="w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52 overflow-visible" style={{ maxHeight: 205 }}>
+          <defs>
+            <filter id="slaPieGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#00282b" floodOpacity="0.08" />
+            </filter>
+          </defs>
+
+          {/* Group Lingkaran Pie dengan rotasi -90deg */}
+          <g transform="rotate(-90 110 110)">
+            {/* Base background ring */}
+            <circle
+              cx="110"
+              cy="110"
+              r={radius}
+              fill="transparent"
+              stroke="#dbeafe"
+              strokeWidth={strokeWidth}
+            />
+
+            {!hasData ? (
+              <circle
+                cx="110"
+                cy="110"
+                r={radius}
+                fill="transparent"
+                stroke="#e2e8f0"
+                strokeWidth={strokeWidth}
+              />
+            ) : (
+              <g filter="url(#slaPieGlow)">
+                {/* 1. Irisan Internal (Cyan) */}
+                {rataInternal > 0 && (
+                  <circle
+                    cx="110"
+                    cy="110"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#01bcce"
+                    strokeWidth={hoveredSlice === 'internal' ? strokeWidth + 5 : strokeWidth}
+                    strokeDasharray={`${internalStroke} ${circumference}`}
+                    strokeDashoffset="0"
+                    className="transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredSlice('internal')}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                )}
+
+                {/* 2. Irisan Eksternal (Dark Teal #268484) */}
+                {rataEksternal > 0 && (
+                  <circle
+                    cx="110"
+                    cy="110"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#268484"
+                    strokeWidth={hoveredSlice === 'eksternal' ? strokeWidth + 5 : strokeWidth}
+                    strokeDasharray={`${eksternalStroke} ${circumference}`}
+                    strokeDashoffset={`${-internalStroke}`}
+                    className="transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredSlice('eksternal')}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                )}
+              </g>
+            )}
+          </g>
+
+          {/* Label & Angka Langsung di Dalam Irisan Donat (Tercover Sempurna) */}
+          {hasData && total > 0 && (
+            <>
+              {/* Internal di Irisan Cyan */}
+              {rataInternal > 0 && pInternal >= 0.08 && (
+                <g className="pointer-events-none select-none transition-all">
+                  <text
+                    x={xInternal}
+                    y={yInternal - 3}
+                    textAnchor="middle"
+                    fill="#00282b"
+                    fontSize="12"
+                    fontWeight="900"
+                  >
+                    {rataInternal.toFixed(1)}%
+                  </text>
+                  <text
+                    x={xInternal}
+                    y={yInternal + 9}
+                    textAnchor="middle"
+                    fill="#00282b"
+                    opacity="0.95"
+                    fontSize="9.5"
+                    fontWeight="800"
+                  >
+                    Internal
+                  </text>
+                </g>
+              )}
+
+              {/* Eksternal di Irisan Dark Teal #268484 */}
+              {rataEksternal > 0 && pEksternal >= 0.08 && (
+                <g className="pointer-events-none select-none transition-all">
+                  <text
+                    x={xEksternal}
+                    y={yEksternal - 3}
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    fontSize="12"
+                    fontWeight="900"
+                    className="drop-shadow"
+                  >
+                    {rataEksternal.toFixed(1)}%
+                  </text>
+                  <text
+                    x={xEksternal}
+                    y={yEksternal + 9}
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    opacity="0.95"
+                    fontSize="9.5"
+                    fontWeight="800"
+                  >
+                    Eksternal
+                  </text>
+                </g>
+              )}
+            </>
+          )}
+
+          {/* Center Hole: Rata-rata Capaian Keseluruhan */}
+          <g className="pointer-events-none select-none text-center">
+            <text
+              x="110"
+              y="99"
+              textAnchor="middle"
+              fill="#94a3b8"
+              fontSize="8.5"
+              fontWeight="800"
+              letterSpacing="1px"
+            >
+              RATA-RATA
+            </text>
+            <text
+              x="110"
+              y="120"
+              textAnchor="middle"
+              fill="#268484"
+              fontSize="21"
+              fontWeight="900"
+              letterSpacing="-0.5px"
+            >
+              {hasData ? `${rataKeseluruhan.toFixed(1)}%` : '0%'}
+            </text>
+            <text
+              x="110"
+              y="134"
+              textAnchor="middle"
+              fill="#64748b"
+              fontSize="8.5"
+              fontWeight="700"
+              letterSpacing="0.5px"
+            >
+              KESELURUHAN
+            </text>
+          </g>
+        </svg>
+      </div>
+
+      {/* Legend & Rincian Interaktif di Bawah (Layout 1 Baris Sejajar & Ringkas) */}
+      <div className="w-full grid grid-cols-3 gap-2 pt-2.5 mt-1 border-t border-gray-100 font-nav">
+        {/* Keseluruhan */}
+        <div className="flex flex-col sm:flex-row items-center justify-between p-1.5 px-2 rounded-xl bg-lime-50/70 border border-[#d0db41]/40 text-center sm:text-left transition-all">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#d0db41] flex-shrink-0" />
+            <span className="text-[11px] font-bold text-gray-700">Keseluruhan</span>
+          </div>
+          <span className="text-xs font-black text-lime-900">
+            {hasData ? `${rataKeseluruhan.toFixed(1)}%` : '-'}
+          </span>
+        </div>
+
+        {/* Internal */}
+        <div
+          className={`flex flex-col sm:flex-row items-center justify-between p-1.5 px-2 rounded-xl transition-all cursor-pointer text-center sm:text-left ${
+            hoveredSlice === 'internal'
+              ? 'bg-cyan-50 ring-1 ring-cyan-200'
+              : 'bg-gray-50/70 hover:bg-gray-50'
+          }`}
+          onMouseEnter={() => setHoveredSlice('internal')}
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#01bcce] flex-shrink-0" />
+            <span className="text-[11px] font-bold text-gray-700">Internal</span>
+          </div>
+          <span className="text-xs font-black text-[#01bcce]">
+            {hasData ? `${rataInternal.toFixed(1)}%` : '-'}
+          </span>
+        </div>
+
+        {/* Eksternal */}
+        <div
+          className={`flex flex-col sm:flex-row items-center justify-between p-1.5 px-2 rounded-xl transition-all cursor-pointer text-center sm:text-left ${
+            hoveredSlice === 'eksternal'
+              ? 'bg-teal-50 ring-1 ring-[#268484]/30'
+              : 'bg-gray-50/70 hover:bg-gray-50'
+          }`}
+          onMouseEnter={() => setHoveredSlice('eksternal')}
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#268484] flex-shrink-0" />
+            <span className="text-[11px] font-bold text-gray-700">Eksternal</span>
+          </div>
+          <span className="text-xs font-black text-[#268484]">
+            {hasData ? `${rataEksternal.toFixed(1)}%` : '-'}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =========================================================================
+// 5. BA TUTUP TAGIHAN CHARTS (LINE CHART & PIE CHART)
+// =========================================================================
+
+export interface BaLineChartDataPoint {
+  bulan: string
+  bulanSingkat: string
+  total_penyedia: number
+  belum_dikonfirmasi: number
+  proses_penagihan: number
+  proses_pembuatan_ba: number
+  sudah_terbit_ba: number
+}
+
+interface BaLineChartProps {
+  data: BaLineChartDataPoint[]
+  title?: string
+  periodeLabel?: string
+}
+
+export function BaTutupTagihanLineChart({ data, title, periodeLabel }: BaLineChartProps) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col items-center justify-center h-full min-h-[250px] text-center font-nav">
+        <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-2 bg-[#eef9fa] text-[#01bcce]">
+          <FileText size={20} />
+        </div>
+        <p className="text-gray-400 font-bold text-sm">Belum ada data BA Tutup Tagihan yang diinput.</p>
+        <p className="text-gray-300 text-xs mt-1">Grafik tren akan muncul otomatis setelah ada data bulan yang diinput.</p>
+      </div>
+    )
+  }
+
+  const width = 760
+  const height = 250
+  const padLeft = 56
+  const padRight = 28
+  const padTop = 22
+  const padBottom = 38
+
+  const plotWidth = width - padLeft - padRight
+  const plotHeight = height - padTop - padBottom
+  const n = data.length
+
+  const maxVal = Math.max(
+    ...data.flatMap(d => [d.total_penyedia, d.sudah_terbit_ba, d.proses_pembuatan_ba, d.proses_penagihan, d.belum_dikonfirmasi]),
+    10
+  )
+  const ceiling = Math.ceil(maxVal * 1.15)
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(r => Math.round(ceiling * r))
+
+  const baseMargin = 28
+  const maxAllowedSpan = plotWidth - 2 * baseMargin
+  const stepX = n <= 1 ? 0 : Math.min(200, maxAllowedSpan / (n - 1))
+  const totalSpan = n <= 1 ? 0 : (n - 1) * stepX
+  const startX = padLeft + (plotWidth - totalSpan) / 2
+
+  const getX = (i: number) => {
+    if (n <= 1) return Number((padLeft + plotWidth / 2).toFixed(2))
+    return Number((startX + i * stepX).toFixed(2))
+  }
+
+  const getY = (val: number) => {
+    return Number((padTop + plotHeight - (val / ceiling) * plotHeight).toFixed(2))
+  }
+
+  const makePath = (key: keyof BaLineChartDataPoint) => {
+    if (n <= 0) return ''
+    return data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d[key] as number)}`).join(' ')
+  }
+
+  const activeIndex = hoveredIdx !== null ? hoveredIdx : null
+  const hoveredData = activeIndex !== null && activeIndex >= 0 ? data[activeIndex] : null
+
+  return (
+    <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200 shadow-sm flex flex-col justify-between h-full font-nav transition-all">
+      {/* Header & Judul */}
+      <div className="w-full text-center mb-0.5">
+        <h4 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
+          {title || 'Tren BA Tutup Tagihan'}
+        </h4>
+        <div className="mt-0.5">
+          <span className="inline-block text-[11px] font-bold text-[#01bcce] bg-[#eef9fa] px-3 py-0.5 rounded-full border border-[#01bcce]/20">
+            {periodeLabel || 'Periode Jan – Des'}
+          </span>
+        </div>
+      </div>
+
+      {/* SVG Multi-Line Chart */}
+      <div className="relative my-auto flex-1 flex items-center justify-center py-1 select-none">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible" style={{ maxHeight: 250 }}>
+          {/* Grid lines horizontal */}
+          {ticks.map((t) => {
+            const y = getY(t)
+            return (
+              <g key={t}>
+                <line
+                  x1={padLeft}
+                  y1={y}
+                  x2={width - padRight}
+                  y2={y}
+                  stroke="#dbeafe"
+                  strokeWidth="1"
+                  strokeDasharray={t === 0 ? 'none' : '3 3'}
+                />
+                <text
+                  x={padLeft - 8}
+                  y={y + 3.5}
+                  textAnchor="end"
+                  fill="#94a3b8"
+                  fontSize="10"
+                  fontWeight="700"
+                >
+                  {t.toLocaleString('id-ID')}
+                </text>
+              </g>
+            )
+          })}
+
+          {/* Sumbu X dasar */}
+          <line
+            x1={padLeft}
+            y1={padTop + plotHeight}
+            x2={width - padRight}
+            y2={padTop + plotHeight}
+            stroke="#cbd5e1"
+            strokeWidth="1.5"
+          />
+
+          {/* Garis Vertikal Hover */}
+          {activeIndex !== null && (
+            <line
+              x1={getX(activeIndex)}
+              y1={padTop}
+              x2={getX(activeIndex)}
+              y2={padTop + plotHeight}
+              stroke="#01bcce"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+              opacity="0.8"
+            />
+          )}
+
+          {/* 1. Line Total Penyedia (Dark Teal #268484) */}
+          <path
+            d={makePath('total_penyedia')}
+            fill="none"
+            stroke="#268484"
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* 2. Line Sudah Terbit BA (Lime #d0db41) */}
+          <path
+            d={makePath('sudah_terbit_ba')}
+            fill="none"
+            stroke="#d0db41"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* 3. Line Proses Pembuatan BA (Cyan) */}
+          <path
+            d={makePath('proses_pembuatan_ba')}
+            fill="none"
+            stroke="#01bcce"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* 4. Line Proses Penagihan (Amber) */}
+          <path
+            d={makePath('proses_penagihan')}
+            fill="none"
+            stroke="#f59e0b"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* 5. Line Belum Dikonfirmasi (Rose) */}
+          <path
+            d={makePath('belum_dikonfirmasi')}
+            fill="none"
+            stroke="#f43f5e"
+            strokeWidth="2.2"
+            strokeDasharray="4 3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Data Points, X-Axis labels, and Hit Areas */}
+          {data.map((d, i) => {
+            const x = getX(i)
+            const yTotal = getY(d.total_penyedia)
+            const yTerbit = getY(d.sudah_terbit_ba)
+            const yBuat = getY(d.proses_pembuatan_ba)
+            const yTagih = getY(d.proses_penagihan)
+            const yBelum = getY(d.belum_dikonfirmasi)
+            const isHovered = activeIndex === i
+
+            return (
+              <g key={d.bulan}>
+                {/* Hit area hover */}
+                <rect
+                  x={x - (stepX > 0 ? stepX / 2 : 25)}
+                  y={padTop}
+                  width={stepX > 0 ? stepX : 50}
+                  height={plotHeight}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredIdx(i)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  onClick={() => setHoveredIdx(hoveredIdx === i ? null : i)}
+                />
+
+                {/* Dot Total Penyedia */}
+                <circle cx={x} cy={yTotal} r={isHovered ? 6 : 4} fill="#268484" stroke="#ffffff" strokeWidth="2" className="pointer-events-none" />
+
+                {/* Dot Sudah Terbit BA */}
+                <circle cx={x} cy={yTerbit} r={isHovered ? 5.5 : 3.5} fill="#d0db41" stroke="#268484" strokeWidth="1.5" className="pointer-events-none" />
+
+                {/* Dot Proses Pembuatan BA */}
+                <circle cx={x} cy={yBuat} r={isHovered ? 5.5 : 3.5} fill="#01bcce" stroke="#ffffff" strokeWidth="2" className="pointer-events-none" />
+
+                {/* Dot Proses Penagihan */}
+                <circle cx={x} cy={yTagih} r={isHovered ? 5.5 : 3.5} fill="#f59e0b" stroke="#ffffff" strokeWidth="2" className="pointer-events-none" />
+
+                {/* Dot Belum Dikonfirmasi */}
+                <circle cx={x} cy={yBelum} r={isHovered ? 5 : 3} fill="#f43f5e" stroke="#ffffff" strokeWidth="1.5" className="pointer-events-none" />
+
+                {/* Label Sumbu X */}
+                <text
+                  x={x}
+                  y={padTop + plotHeight + 17}
+                  textAnchor="middle"
+                  fill={isHovered ? '#00282b' : '#64748b'}
+                  fontSize={n > 8 ? '9.5' : '11'}
+                  fontWeight={isHovered ? '900' : '700'}
+                >
+                  {n > 8 ? d.bulanSingkat : d.bulan}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+
+        {/* Floating Toggle Tooltip */}
+        {hoveredData && activeIndex !== null && (
+          <div
+            className="absolute z-20 pointer-events-none transition-all duration-150 ease-out"
+            style={{
+              left: `${(getX(activeIndex) / width) * 100}%`,
+              top: '12px',
+              transform:
+                getX(activeIndex) > width * 0.52
+                  ? 'translateX(calc(-100% - 18px))'
+                  : 'translateX(18px)',
+            }}
+          >
+            <div className="bg-[#00282b]/95 backdrop-blur-md text-white rounded-xl px-4 py-2.5 shadow-2xl border border-[#01bcce]/30 min-w-[170px]">
+              <div className="flex items-center justify-between pb-1 mb-1.5 border-b border-white/10">
+                <span className="font-black text-xs text-[#d0db41]">
+                  {hoveredData.bulan}
+                </span>
+                <span className="text-[10px] text-gray-300 font-bold bg-white/10 px-1.5 py-0.5 rounded">
+                  {hoveredData.bulanSingkat}
+                </span>
+              </div>
+              <div className="space-y-1 text-xs font-nav">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-teal-200 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#268484] border border-white inline-block shadow-xs" />
+                    Total Penyedia:
+                  </span>
+                  <span className="font-black text-white">
+                    {hoveredData.total_penyedia.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-lime-300 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#d0db41] inline-block shadow-xs" />
+                    Sudah Terbit BA:
+                  </span>
+                  <span className="font-black text-[#d0db41]">
+                    {hoveredData.sudah_terbit_ba.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-cyan-300 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#01bcce] inline-block shadow-xs" />
+                    Proses Buat BA:
+                  </span>
+                  <span className="font-black text-[#01bcce]">
+                    {hoveredData.proses_pembuatan_ba.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-amber-300 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] inline-block shadow-xs" />
+                    Proses Penagihan:
+                  </span>
+                  <span className="font-black text-[#f59e0b]">
+                    {hoveredData.proses_penagihan.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-rose-300 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] inline-block shadow-xs" />
+                    Belum Konfirmasi:
+                  </span>
+                  <span className="font-black text-[#f43f5e]">
+                    {hoveredData.belum_dikonfirmasi.toLocaleString('id-ID')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Legend Garis di Bawah */}
+      <div className="flex items-center justify-center gap-2 sm:gap-4 text-[11px] font-bold flex-wrap pt-2.5 border-t border-gray-100 font-nav">
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-teal-50/70 border border-[#268484]/20 text-[#268484]">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#268484]" />
+          <span>Total Penyedia</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-lime-50/70 border border-[#d0db41]/30 text-lime-900">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#d0db41]" />
+          <span>Sudah Terbit BA</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-cyan-50/70 border border-cyan-100 text-[#01bcce]">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#01bcce]" />
+          <span>Proses Buat BA</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-amber-50/70 border border-amber-100 text-[#d97706]">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" />
+          <span>Proses Penagihan</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-rose-50/70 border border-rose-100 text-[#e11d48]">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e]" />
+          <span>Belum Konfirmasi</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export interface BaPieChartProps {
+  totalPenyedia: number
+  belumDikonfirmasi: number
+  prosesPenagihan: number
+  prosesPembuatanBa: number
+  sudahTerbitBa: number
+  periodeLabel?: string
+  title?: string
+}
+
+export function BaTutupTagihanPieChart({
+  totalPenyedia,
+  belumDikonfirmasi,
+  prosesPenagihan,
+  prosesPembuatanBa,
+  sudahTerbitBa,
+  periodeLabel,
+  title,
+}: BaPieChartProps) {
+  const [hoveredSlice, setHoveredSlice] = useState<string | null>(null)
+
+  const sumValues = sudahTerbitBa + prosesPembuatanBa + prosesPenagihan + belumDikonfirmasi
+  const total = Math.max(totalPenyedia, sumValues)
+  const hasData = total > 0
+
+  const radius = 76
+  const strokeWidth = 48
+  const circumference = 2 * Math.PI * radius
+
+  const pTerbit = total > 0 ? sudahTerbitBa / total : 0
+  const pBuat = total > 0 ? prosesPembuatanBa / total : 0
+  const pTagih = total > 0 ? prosesPenagihan / total : 0
+  const pBelum = total > 0 ? belumDikonfirmasi / total : 0
+
+  const strokeTerbit = pTerbit * circumference
+  const strokeBuat = pBuat * circumference
+  const strokeTagih = pTagih * circumference
+  const strokeBelum = pBelum * circumference
+
+  // Midpoint angles for text placement inside donut ring
+  const aTerbit = -Math.PI / 2 + Math.PI * pTerbit
+  const aBuat = -Math.PI / 2 + 2 * Math.PI * pTerbit + Math.PI * pBuat
+  const aTagih = -Math.PI / 2 + 2 * Math.PI * (pTerbit + pBuat) + Math.PI * pTagih
+  const aBelum = -Math.PI / 2 + 2 * Math.PI * (pTerbit + pBuat + pTagih) + Math.PI * pBelum
+
+  const getPos = (angle: number) => ({
+    x: Number((110 + radius * Math.cos(angle)).toFixed(2)),
+    y: Number((110 + radius * Math.sin(angle)).toFixed(2)),
+  })
+
+  const posTerbit = getPos(aTerbit)
+  const posBuat = getPos(aBuat)
+  const posTagih = getPos(aTagih)
+  const posBelum = getPos(aBelum)
+
+  return (
+    <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200 shadow-sm flex flex-col justify-between h-full font-nav transition-all">
+      {/* Header & Subtitle */}
+      <div className="w-full text-center mb-0.5">
+        <h4 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
+          {title || 'Proporsi Status BA Tutup Tagihan'}
+        </h4>
+        <div className="mt-0.5">
+          <span className="inline-block text-[11px] font-bold text-[#01bcce] bg-[#eef9fa] px-3 py-0.5 rounded-full border border-[#01bcce]/20">
+            {!hasData ? 'Belum Ada Data' : (periodeLabel || 'Periode Jan – Des')}
+          </span>
+        </div>
+      </div>
+
+      {/* SVG Donut Chart */}
+      <div className="relative my-auto flex-1 flex items-center justify-center py-1">
+        <svg viewBox="0 0 220 220" className="w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52 overflow-visible" style={{ maxHeight: 205 }}>
+          <defs>
+            <filter id="baPieGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#00282b" floodOpacity="0.08" />
+            </filter>
+          </defs>
+
+          {/* Group Lingkaran Pie dengan rotasi -90deg */}
+          <g transform="rotate(-90 110 110)">
+            {/* Base background ring */}
+            <circle
+              cx="110"
+              cy="110"
+              r={radius}
+              fill="transparent"
+              stroke="#dbeafe"
+              strokeWidth={strokeWidth}
+            />
+
+            {!hasData ? (
+              <circle
+                cx="110"
+                cy="110"
+                r={radius}
+                fill="transparent"
+                stroke="#e2e8f0"
+                strokeWidth={strokeWidth}
+              />
+            ) : (
+              <g filter="url(#baPieGlow)">
+                {/* 1. Sudah Terbit BA (Lime #d0db41) */}
+                {sudahTerbitBa > 0 && (
+                  <circle
+                    cx="110"
+                    cy="110"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#d0db41"
+                    strokeWidth={hoveredSlice === 'terbit' ? strokeWidth + 5 : strokeWidth}
+                    strokeDasharray={`${strokeTerbit} ${circumference}`}
+                    strokeDashoffset="0"
+                    className="transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredSlice('terbit')}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                )}
+
+                {/* 2. Proses Pembuatan BA (Cyan #01bcce) */}
+                {prosesPembuatanBa > 0 && (
+                  <circle
+                    cx="110"
+                    cy="110"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#01bcce"
+                    strokeWidth={hoveredSlice === 'buat' ? strokeWidth + 5 : strokeWidth}
+                    strokeDasharray={`${strokeBuat} ${circumference}`}
+                    strokeDashoffset={`${-strokeTerbit}`}
+                    className="transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredSlice('buat')}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                )}
+
+                {/* 3. Proses Penagihan (Teal #268484) */}
+                {prosesPenagihan > 0 && (
+                  <circle
+                    cx="110"
+                    cy="110"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#268484"
+                    strokeWidth={hoveredSlice === 'tagih' ? strokeWidth + 5 : strokeWidth}
+                    strokeDasharray={`${strokeTagih} ${circumference}`}
+                    strokeDashoffset={`${-(strokeTerbit + strokeBuat)}`}
+                    className="transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredSlice('tagih')}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                )}
+
+                {/* 4. Belum Dikonfirmasi (Rose) */}
+                {belumDikonfirmasi > 0 && (
+                  <circle
+                    cx="110"
+                    cy="110"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#f43f5e"
+                    strokeWidth={hoveredSlice === 'belum' ? strokeWidth + 5 : strokeWidth}
+                    strokeDasharray={`${strokeBelum} ${circumference}`}
+                    strokeDashoffset={`${-(strokeTerbit + strokeBuat + strokeTagih)}`}
+                    className="transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredSlice('belum')}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                )}
+              </g>
+            )}
+          </g>
+
+          {/* Teks di dalam irisan donat */}
+          {hasData && (
+            <>
+              {/* Sudah Terbit BA */}
+              {sudahTerbitBa > 0 && pTerbit >= 0.08 && (
+                <g className="pointer-events-none select-none transition-all">
+                  <text x={posTerbit.x} y={posTerbit.y - 3} textAnchor="middle" fill="#00282b" fontSize="11.5" fontWeight="900">
+                    {sudahTerbitBa}
+                  </text>
+                  <text x={posTerbit.x} y={posTerbit.y + 9} textAnchor="middle" fill="#00282b" opacity="0.9" fontSize="9" fontWeight="800">
+                    Terbit BA
+                  </text>
+                </g>
+              )}
+
+              {/* Proses Pembuatan BA */}
+              {prosesPembuatanBa > 0 && pBuat >= 0.08 && (
+                <g className="pointer-events-none select-none transition-all">
+                  <text x={posBuat.x} y={posBuat.y - 3} textAnchor="middle" fill="#00282b" fontSize="11.5" fontWeight="900">
+                    {prosesPembuatanBa}
+                  </text>
+                  <text x={posBuat.x} y={posBuat.y + 9} textAnchor="middle" fill="#00282b" opacity="0.9" fontSize="9" fontWeight="800">
+                    Buat BA
+                  </text>
+                </g>
+              )}
+
+              {/* Proses Penagihan */}
+              {prosesPenagihan > 0 && pTagih >= 0.08 && (
+                <g className="pointer-events-none select-none transition-all">
+                  <text x={posTagih.x} y={posTagih.y - 3} textAnchor="middle" fill="#ffffff" fontSize="11.5" fontWeight="900" className="drop-shadow">
+                    {prosesPenagihan}
+                  </text>
+                  <text x={posTagih.x} y={posTagih.y + 9} textAnchor="middle" fill="#ffffff" opacity="0.95" fontSize="9" fontWeight="800">
+                    Penagihan
+                  </text>
+                </g>
+              )}
+
+              {/* Belum Dikonfirmasi */}
+              {belumDikonfirmasi > 0 && pBelum >= 0.08 && (
+                <g className="pointer-events-none select-none transition-all">
+                  <text x={posBelum.x} y={posBelum.y - 3} textAnchor="middle" fill="#ffffff" fontSize="11.5" fontWeight="900" className="drop-shadow">
+                    {belumDikonfirmasi}
+                  </text>
+                  <text x={posBelum.x} y={posBelum.y + 9} textAnchor="middle" fill="#ffffff" opacity="0.95" fontSize="8.5" fontWeight="800">
+                    Belum Konf.
+                  </text>
+                </g>
+              )}
+            </>
+          )}
+
+          {/* Center Hole: Total Penyedia */}
+          <g className="pointer-events-none select-none text-center">
+            <text x="110" y="99" textAnchor="middle" fill="#94a3b8" fontSize="8.5" fontWeight="800" letterSpacing="1px">
+              TOTAL
+            </text>
+            <text x="110" y="120" textAnchor="middle" fill="#268484" fontSize="21" fontWeight="900" letterSpacing="-0.5px">
+              {total.toLocaleString('id-ID')}
+            </text>
+            <text x="110" y="134" textAnchor="middle" fill="#64748b" fontSize="8.5" fontWeight="700" letterSpacing="0.5px">
+              PENYEDIA
+            </text>
+          </g>
+        </svg>
+      </div>
+
+      {/* Legend & Rincian Interaktif di Bawah (4 Kolom Ringkas) */}
+      <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-2.5 mt-1 border-t border-gray-100 font-nav">
+        {/* Sudah Terbit BA */}
+        <div
+          className={`flex items-center justify-between p-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+            hoveredSlice === 'terbit' ? 'bg-[#d0db41]/20 ring-1 ring-[#d0db41]' : 'bg-gray-50/70 hover:bg-gray-50'
+          }`}
+          onMouseEnter={() => setHoveredSlice('terbit')}
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#d0db41] flex-shrink-0" />
+            <span className="text-[10.5px] font-bold text-gray-700 truncate">Terbit BA</span>
+          </div>
+          <span className="text-xs font-black text-[#566000]">
+            {sudahTerbitBa.toLocaleString('id-ID')}
+          </span>
+        </div>
+
+        {/* Proses Buat BA */}
+        <div
+          className={`flex items-center justify-between p-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+            hoveredSlice === 'buat' ? 'bg-cyan-50 ring-1 ring-cyan-300' : 'bg-gray-50/70 hover:bg-gray-50'
+          }`}
+          onMouseEnter={() => setHoveredSlice('buat')}
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#01bcce] flex-shrink-0" />
+            <span className="text-[10.5px] font-bold text-gray-700 truncate">Buat BA</span>
+          </div>
+          <span className="text-xs font-black text-[#01bcce]">
+            {prosesPembuatanBa.toLocaleString('id-ID')}
+          </span>
+        </div>
+
+        {/* Proses Penagihan */}
+        <div
+          className={`flex items-center justify-between p-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+            hoveredSlice === 'tagih' ? 'bg-[#268484]/15 ring-1 ring-[#268484]' : 'bg-gray-50/70 hover:bg-gray-50'
+          }`}
+          onMouseEnter={() => setHoveredSlice('tagih')}
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#268484] flex-shrink-0" />
+            <span className="text-[10.5px] font-bold text-gray-700 truncate">Penagihan</span>
+          </div>
+          <span className="text-xs font-black text-[#268484]">
+            {prosesPenagihan.toLocaleString('id-ID')}
+          </span>
+        </div>
+
+        {/* Belum Dikonfirmasi */}
+        <div
+          className={`flex items-center justify-between p-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+            hoveredSlice === 'belum' ? 'bg-rose-50 ring-1 ring-rose-300' : 'bg-gray-50/70 hover:bg-gray-50'
+          }`}
+          onMouseEnter={() => setHoveredSlice('belum')}
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] flex-shrink-0" />
+            <span className="text-[10.5px] font-bold text-gray-700 truncate">Belum Konf.</span>
+          </div>
+          <span className="text-xs font-black text-[#e11d48]">
+            {belumDikonfirmasi.toLocaleString('id-ID')}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+

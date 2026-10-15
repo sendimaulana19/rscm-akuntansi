@@ -70,12 +70,28 @@ export default async function MitraDetailPage({ params }: { params: Promise<{ na
       
       {/* ═══════ HEADER ═══════ */}
       <div
-        className="w-full py-12 px-6"
+        className="w-full py-12 px-6 relative overflow-hidden"
         style={{
           background: 'linear-gradient(135deg, #00282b 0%, #015a61 100%)',
         }}
       >
-        <div className="max-w-6xl mx-auto">
+        {/* Watermark Ornamen Mandala (Kanan Atas) */}
+        <img
+          src="/ornament-mandala.png"
+          alt=""
+          className="absolute -top-10 -right-10 w-48 h-48 object-contain pointer-events-none select-none z-0"
+          style={{ opacity: 0.15 }}
+        />
+
+        {/* Watermark Ornamen Sisi Kiri */}
+        <img
+          src="/ornament-side.png"
+          alt=""
+          className="absolute -left-6 sm:-left-8 top-0 bottom-0 h-full w-32 sm:w-44 object-cover object-left pointer-events-none select-none z-0 opacity-[0.08]"
+          style={{ filter: 'brightness(0) invert(1)' }}
+        />
+
+        <div className="max-w-6xl mx-auto relative z-10">
           <div className="mb-6">
             <Link href="/akuntansi-manajemen" className="inline-flex items-center gap-2 text-cyan-200 hover:text-white font-nav text-sm transition-colors">
               <ArrowLeft size={16} /> Kembali ke Daftar KSO

@@ -69,14 +69,19 @@ export default function AdminDashboardPage() {
         {/* Menu Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Kinerja Keuangan', href: '/admin/kinerja-keuangan', icon: '📊' },
+            { label: 'Data Laporan', href: '/admin/data-laporan', icon: '📈' },
             { label: 'Laporan Keuangan', href: '/admin/laporan-keuangan', icon: '📋' },
             { label: 'Akuntansi Manajemen', href: '/admin/akuntansi-manajemen', icon: '🏢' },
-            { label: 'Video Tutorial', href: '/admin/video-tutorial', icon: '🎥' },
+            { label: 'Akuntansi Verifikasi', href: '/admin/akuntansi-verifikasi', icon: '📑' },
+            { label: 'Pusat Edukasi', href: '/admin/pusat-edukasi', icon: '🎥' },
             { label: 'Kepuasan Pelanggan', href: '/admin/kepuasan-pelanggan', icon: '⭐' },
-            { label: 'Download Dokumen', href: '/admin/download-dokumen', icon: '📁' },
+            { label: 'Regulasi & Kebijakan', href: '/admin/regulasi-kebijakan', icon: '⚖️' },
+            { label: 'Layanan & Formulir', href: '/admin/layanan-formulir', icon: '📝' },
+            { label: 'FAQ', href: '/admin/faq', icon: '❓' },
             { label: 'Dokumentasi', href: '/admin/dokumentasi', icon: '🖼️' },
             { label: 'Pengumuman', href: '/admin/pengumuman', icon: '📢' },
+            { label: 'Profil Tim Kerja', href: '/admin/profil', icon: '🏛️' },
+            { label: 'Budaya Kerja', href: '/admin/budaya-kerja', icon: '✨' },
             { label: 'Our Teams', href: '/admin/our-teams', icon: '👥' },
             { label: 'Kontak Pesan', href: '/admin/kontak', icon: '✉️' },
           ].map((menu) => (

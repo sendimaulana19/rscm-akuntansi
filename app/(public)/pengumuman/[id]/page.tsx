@@ -52,9 +52,24 @@ export default async function PengumumanDetailPage({ params }: Props) {
       {/* ═══════ HERO ═══════ */}
       <div style={{
         position: 'relative', height: 320,
-        backgroundImage: 'url(/images/header-pengumuman.png)', backgroundSize: 'cover', backgroundPosition: 'center 30%',
+        background: 'linear-gradient(135deg, #00282b 0%, #015a61 100%)',
+        overflow: 'hidden',
       }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,40,43,.92), rgba(0,40,43,.65))' }} />
+        {/* Watermark Ornamen Mandala (Kanan Atas) */}
+        <img
+          src="/ornament-mandala.png"
+          alt=""
+          className="absolute -top-10 -right-10 w-48 h-48 object-contain pointer-events-none select-none z-0"
+          style={{ opacity: 0.15 }}
+        />
+
+        {/* Watermark Ornamen Sisi Kiri */}
+        <img
+          src="/ornament-side.png"
+          alt=""
+          className="absolute -left-6 sm:-left-8 top-0 bottom-0 h-full w-32 sm:w-44 object-cover object-left pointer-events-none select-none z-0 opacity-[0.08]"
+          style={{ filter: 'brightness(0) invert(1)' }}
+        />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 1140, margin: '0 auto', padding: '0 24px', height: '100%', display: 'flex', alignItems: 'center' }}>
           <div>
             <Link

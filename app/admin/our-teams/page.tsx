@@ -33,45 +33,64 @@ export default function AdminOurTeamsPage() {
 
   useEffect(() => { loadData() }, [])
   async function loadData() {
-    const { data: d } = await supabase.from('our_teams').select('*').order('urutan', { ascending: true })
-    setData(d || [])
+    try {
+      const { data: d, error } = await supabase.from('our_teams').select('*').order('urutan', { ascending: true })
+      if (!error && d) setData(d)
+    } catch (err) {
+      console.warn('Gagal memuat data our_teams:', err)
+    }
   }
 
   async function handleUpload() {
     if (!nama) { setMessage('⚠️ Nama wajib diisi!'); return }
     setUploading(true); setMessage('')
     let fotoUrl = null
-    if (foto) {
-      const fileName = `team-${Date.now()}-${foto.name}`
-      const { error: upErr } = await supabase.storage.from('rscm-images').upload(fileName, foto)
-      if (!upErr) {
-        const { data: { publicUrl } } = supabase.storage.from('rscm-images').getPublicUrl(fileName)
-        fotoUrl = publicUrl
+    try {
+      if (foto) {
+        const fileName = `team-${Date.now()}-${foto.name}`
+        const { error: upErr } = await supabase.storage.from('rscm-images').upload(fileName, foto)
+        if (!upErr) {
+          const { data: { publicUrl } } = supabase.storage.from('rscm-images').getPublicUrl(fileName)
+          fotoUrl = publicUrl
+        } else {
+          setMessage('❌ Gagal upload foto: ' + upErr.message)
+          setUploading(false)
+          return
+        }
       }
-    }
-    
-    // Save as delimited string
-    const finalJabatan = subTim === '-' ? kategoriJabatan : `${kategoriJabatan}|${subTim}`
+      
+      // Save as delimited string
+      const finalJabatan = subTim === '-' ? kategoriJabatan : `${kategoriJabatan}|${subTim}`
 
-    const { error } = await supabase.from('our_teams').insert({ nama, jabatan: finalJabatan, urutan: parseInt(urutan), foto_url: fotoUrl })
-    if (error) { setMessage('❌ Gagal simpan: ' + error.message) }
-    else { 
-      setMessage('✅ Berhasil!'); 
-      setNama(''); 
-      setKategoriJabatan('Staff'); 
-      setSubTim('-'); 
-      setUrutan('1'); 
-      setFoto(null); 
-      if (fotoRef.current) fotoRef.current.value = ''; 
-      loadData() 
+      const { error } = await supabase.from('our_teams').insert({ nama, jabatan: finalJabatan, urutan: parseInt(urutan), foto_url: fotoUrl })
+      if (error) { 
+        setMessage('❌ Gagal simpan: ' + error.message) 
+      } else { 
+        setMessage('✅ Berhasil!'); 
+        setNama(''); 
+        setKategoriJabatan('Staff'); 
+        setSubTim('-'); 
+        setUrutan('1'); 
+        setFoto(null); 
+        if (fotoRef.current) fotoRef.current.value = ''; 
+        loadData() 
+      }
+    } catch (err: any) {
+      setMessage('❌ Terjadi kesalahan jaringan: ' + (err?.message || 'Failed to fetch'))
+    } finally {
+      setUploading(false)
+      setTimeout(() => setMessage(''), 4000)
     }
-    setUploading(false); setTimeout(() => setMessage(''), 4000)
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Hapus anggota ini?')) return
-    await supabase.from('our_teams').delete().eq('id', id)
-    loadData()
+    try {
+      await supabase.from('our_teams').delete().eq('id', id)
+      loadData()
+    } catch (err: any) {
+      alert('Gagal menghapus: ' + (err?.message || 'Terjadi gangguan jaringan'))
+    }
   }
 
   // Parse helper for display

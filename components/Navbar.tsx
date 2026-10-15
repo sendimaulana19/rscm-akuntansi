@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronDown, Menu, X } from 'lucide-react'
 
-const navItems = [
+const getNavItems = (kpiUrl: string) => [
   { label: 'Beranda', href: '/' },
   {
     label: 'Sub Tim Kerja',
@@ -20,9 +20,8 @@ const navItems = [
     label: 'Profil',
     href: '#',
     children: [
-      { label: 'Profil RSCM', href: '/profil/rscm' },
-      { label: 'Struktur Organisasi', href: '/profil/struktur-organisasi' },
-      { label: 'KPI', href: '/profil/kpi' },
+      { label: 'Profil Tim Kerja Akuntansi', href: '/profil/tim-kerja-akuntansi' },
+      { label: 'KPI', href: kpiUrl, target: kpiUrl.startsWith('http') ? '_blank' : '_self' },
       { label: 'Budaya Kerja', href: '/profil/budaya-kerja' },
     ],
   },
@@ -30,9 +29,10 @@ const navItems = [
     label: 'Informasi Publik',
     href: '#',
     children: [
-      { label: 'Video Tutorial', href: '/video-tutorial' },
-      { label: 'Kepuasan Pelanggan', href: '/kepuasan-pelanggan' },
-      { label: 'Download Dokumen', href: '/download-dokumen' },
+      { label: 'Pusat Edukasi', href: '/pusat-edukasi' },
+      { label: 'Regulasi & Kebijakan', href: '/regulasi-kebijakan' },
+      { label: 'Layanan & Formulir', href: '/layanan-formulir' },
+      { label: 'FAQ', href: '/faq' },
       { label: 'Pengumuman', href: '/pengumuman' },
       { label: 'Dokumentasi Kegiatan', href: '/dokumentasi' },
     ],
@@ -41,7 +41,8 @@ const navItems = [
   { label: 'Kontak', href: '/kontak' },
 ]
 
-export default function Navbar() {
+export default function Navbar({ kpiUrl = '/profil/kpi' }: { kpiUrl?: string }) {
+  const navItems = getNavItems(kpiUrl)
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
@@ -104,6 +105,7 @@ export default function Navbar() {
                         <Link
                           key={child.href}
                           href={child.href}
+                          target={(child as any).target || '_self'}
                           className={`block font-semibold transition-all duration-200 border-b border-gray-50 last:border-0 last:rounded-b-2xl ${
                             pathname === child.href
                               ? 'bg-[#eef9fa] text-[#00282b]'
@@ -164,6 +166,7 @@ export default function Navbar() {
                           <Link
                             key={child.href}
                             href={child.href}
+                            target={(child as any).target || '_self'}
                             onClick={() => setMobileOpen(false)}
                             className="block font-semibold text-gray-600 border-b border-white hover:text-[#01bcce] hover:bg-white transition-colors"
                             style={{ padding: '14px 40px', fontSize: '14px' }}
