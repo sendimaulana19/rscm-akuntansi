@@ -41,6 +41,29 @@ function fmtAngka(v: any) {
   return String(v)
 }
 
+function parseNumber(raw: string | number | null | undefined): number | null {
+  if (raw == null) return null
+  if (typeof raw === 'number') return isNaN(raw) ? null : raw
+  let s = String(raw).trim().replace(/\s/g, '').replace(/^Rp/i, '')
+  if (!s || s === '-' || s === '–') return s ? 0 : null
+  let neg = false
+  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1) }
+  if (s.startsWith('-')) { neg = true; s = s.slice(1) }
+  s = s.replace(/%$/, '')
+  const hasComma = s.includes(','), hasDot = s.includes('.')
+  if (hasComma && hasDot) {
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.')
+    else s = s.replace(/,/g, '')
+  } else if (hasComma) {
+    s = /^\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, '') : s.replace(',', '.')
+  } else if (hasDot) {
+    s = /^\d{1,3}(\.\d{3})+$/.test(s) ? s.replace(/\./g, '') : s
+  }
+  const n = parseFloat(s)
+  if (isNaN(n)) return null
+  return neg ? -n : n
+}
+
 function parseTargetRule(
   customTarget: string | null | undefined,
   defaultTargetVal: number | null,

@@ -1085,7 +1085,7 @@ export default function SpreadsheetForm({ year, category, title, rows: initialTe
 
         {/* Right: Active context indicator */}
         <div className="flex items-center gap-2 text-xs font-nav text-gray-500">
-          {activeRowObj ? (
+          {activeRow !== null && activeRowObj ? (
             <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
               <span className="w-2 h-2 rounded-full bg-[#01bcce]" />
               <span>Target:</span>
