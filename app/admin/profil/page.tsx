@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
 import Link from 'next/link'
 import { ArrowLeft, Save, Upload, Building, ImageIcon, Trash2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
@@ -72,6 +73,11 @@ export default function AdminProfilPage() {
 
         const { data: urlData } = supabase.storage.from('rscm-files').getPublicUrl(fileName)
         finalGambarUrl = urlData.publicUrl
+
+        // Hapus gambar lama jika ada pergantian gambar
+        if (gambarUrl && gambarUrl !== finalGambarUrl) {
+          await deleteFileFromStorage(supabase, gambarUrl)
+        }
       }
 
       // Check if exists
@@ -120,6 +126,9 @@ export default function AdminProfilPage() {
     setSaving(true)
     setMessage(null)
     try {
+      if (gambarUrl) {
+        await deleteFileFromStorage(supabase, gambarUrl)
+      }
       const { error } = await supabase.from('halaman_profil').delete().eq('slug', slug)
       if (error) throw new Error(error.message)
       

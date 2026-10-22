@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
 import { Upload, Trash2, FileText, Plus, ExternalLink, Link as LinkIcon, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -245,10 +246,9 @@ function AdminLaporanKeuanganContent() {
   async function handleDeleteLaporan(id: string, fileUrl: string, isLaporan: boolean) {
     if (!confirm('Hapus file ini?')) return
     const table = isLaporan ? 'laporan_keuangan' : 'catatan_laporan_keuangan'
-    const fileName = fileUrl.split('/').pop()!
     await Promise.all([
       supabase.from(table).delete().eq('id', id),
-      supabase.storage.from('rscm-files').remove([fileName])
+      deleteFileFromStorage(supabase, fileUrl)
     ])
     loadData()
   }
@@ -263,11 +263,8 @@ function AdminLaporanKeuanganContent() {
         await supabase.from('financial_reports_data').delete().eq('category', 'unduh_dokumen').eq('item_name', item.id)
       }
 
-      if (item.file_url && item.file_url.includes('rscm-files')) {
-        const fileName = item.file_url.split('/').pop()
-        if (fileName) {
-          await supabase.storage.from('rscm-files').remove([fileName])
-        }
+      if (item.file_url) {
+        await deleteFileFromStorage(supabase, item.file_url)
       }
       loadData()
     } catch (err: any) {

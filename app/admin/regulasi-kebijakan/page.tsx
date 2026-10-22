@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
 import { Plus, Trash2, Link as LinkIcon, Download } from 'lucide-react'
 import Link from 'next/link'
 
@@ -50,6 +51,10 @@ export default function AdminDownloadDokumenPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('Hapus dokumen ini?')) return
+    const item = data.find(d => d.id === id)
+    if (item?.file_url) {
+      await deleteFileFromStorage(supabase, item.file_url)
+    }
     await supabase.from('download_dokumen').delete().eq('id', id)
     loadData()
   }

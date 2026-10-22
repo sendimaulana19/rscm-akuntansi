@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "backup": "node scripts/backup.js",
+    "clean-storage": "node scripts/clean-storage.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.3.0",

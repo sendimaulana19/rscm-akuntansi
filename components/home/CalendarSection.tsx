@@ -1,5 +1,5 @@
 export default function CalendarSection() {
-  const embedUrl = `https://calendar.google.com/calendar/embed?src=sendimaulana1199%40gmail.com&ctz=Asia%2FJakarta&mode=AGENDA&showTitle=0&showNav=1&showPrint=0&showCalendars=0&showTz=1&bgcolor=%23ffffff&color=%2300282b`
+  const embedUrl = `https://calendar.google.com/calendar/embed?src=akuntansirscm%40gmail.com&ctz=Asia%2FJakarta&mode=AGENDA&showTitle=0&showNav=1&showPrint=0&showCalendars=0&showTz=1&bgcolor=%23ffffff&color=%2300282b`
 
   return (
     <section className="relative" style={{ background: '#00282b', paddingTop: '140px', paddingBottom: '100px' }}>

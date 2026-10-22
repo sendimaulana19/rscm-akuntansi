@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
 import Link from 'next/link'
 import { Upload, Trash2, Eye, Plus, ArrowLeft, Video, FileText } from 'lucide-react'
 import dynamic from 'next/dynamic'
@@ -119,6 +120,12 @@ export default function VideoTutorialPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Hapus video tutorial ini?')) return
+    const item = data.find(v => v.id === id)
+    if (item) {
+      if (item.thumbnail_url) await deleteFileFromStorage(supabase, item.thumbnail_url)
+      if (item.materi_url) await deleteFileFromStorage(supabase, item.materi_url)
+      if (item.video_url) await deleteFileFromStorage(supabase, item.video_url)
+    }
     const { error } = await supabase.from('video_tutorial').delete().eq('id', id)
     if (error) {
       setMessage({ type: 'error', text: 'Gagal menghapus: ' + error.message })

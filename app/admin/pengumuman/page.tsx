@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
 import { Trash2, Plus, ToggleLeft, ToggleRight } from 'lucide-react'
 import Link from 'next/link'
 
@@ -48,6 +49,10 @@ export default function AdminPengumumanPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('Hapus pengumuman ini?')) return
+    const item = data.find(p => p.id === id)
+    if (item?.file_url) {
+      await deleteFileFromStorage(supabase, item.file_url)
+    }
     await supabase.from('pengumuman').delete().eq('id', id)
     loadData()
   }

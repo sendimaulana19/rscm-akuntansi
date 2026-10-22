@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
 import {
   Upload,
   Trash2,
@@ -204,6 +205,9 @@ export default function AdminAkuntansiManajemenPage() {
     try {
       const publicUrl = await uploadImageFile(file, 'unitcost')
       if (publicUrl) {
+        if (unitCostImage && unitCostImage !== publicUrl) {
+          await deleteFileFromStorage(supabase, unitCostImage)
+        }
         setUnitCostImage(publicUrl)
         showFeedback('success', 'Gambar Unit Cost berhasil diunggah!')
       }
@@ -214,12 +218,25 @@ export default function AdminAkuntansiManajemenPage() {
     }
   }
 
+  // Handle Remove Gambar Unit Cost
+  async function handleRemoveUnitCostImage() {
+    if (!confirm('Hapus gambar infografis Unit Cost ini?')) return
+    if (unitCostImage) {
+      await deleteFileFromStorage(supabase, unitCostImage)
+      setUnitCostImage('')
+      showFeedback('success', 'Gambar Unit Cost berhasil dihapus dari penyimpanan!')
+    }
+  }
+
   // Handle Upload Gambar Monev KSO
   async function handleUploadMonev(file: File) {
     setUploadingImage(true)
     try {
       const publicUrl = await uploadImageFile(file, 'monev')
       if (publicUrl) {
+        if (monevKsoImage && monevKsoImage !== publicUrl) {
+          await deleteFileFromStorage(supabase, monevKsoImage)
+        }
         setMonevKsoImage(publicUrl)
         showFeedback('success', 'Gambar Monev KSO berhasil diunggah!')
       }
@@ -227,6 +244,16 @@ export default function AdminAkuntansiManajemenPage() {
       showFeedback('error', `Gagal mengunggah gambar: ${err.message}`)
     } finally {
       setUploadingImage(false)
+    }
+  }
+
+  // Handle Remove Gambar Monev KSO
+  async function handleRemoveMonevImage() {
+    if (!confirm('Hapus gambar Monev KSO ini?')) return
+    if (monevKsoImage) {
+      await deleteFileFromStorage(supabase, monevKsoImage)
+      setMonevKsoImage('')
+      showFeedback('success', 'Gambar Monev KSO berhasil dihapus dari penyimpanan!')
     }
   }
 
@@ -259,6 +286,9 @@ export default function AdminAkuntansiManajemenPage() {
     try {
       const publicUrl = await uploadDocumentFile(file, 'operatif')
       if (publicUrl) {
+        if (linkOperatif && linkOperatif !== publicUrl) {
+          await deleteFileFromStorage(supabase, linkOperatif)
+        }
         setLinkOperatif(publicUrl)
         showFeedback('success', `File "${file.name}" berhasil diunggah! Link URL otomatis terisi.`)
       }
@@ -275,6 +305,9 @@ export default function AdminAkuntansiManajemenPage() {
     try {
       const publicUrl = await uploadDocumentFile(file, 'non-operatif')
       if (publicUrl) {
+        if (linkNonOperatif && linkNonOperatif !== publicUrl) {
+          await deleteFileFromStorage(supabase, linkNonOperatif)
+        }
         setLinkNonOperatif(publicUrl)
         showFeedback('success', `File "${file.name}" berhasil diunggah! Link URL otomatis terisi.`)
       }
@@ -291,6 +324,9 @@ export default function AdminAkuntansiManajemenPage() {
     try {
       const publicUrl = await uploadDocumentFile(file, 'monev-kso')
       if (publicUrl) {
+        if (linkDashboardMonev && linkDashboardMonev !== publicUrl) {
+          await deleteFileFromStorage(supabase, linkDashboardMonev)
+        }
         setLinkDashboardMonev(publicUrl)
         showFeedback('success', `File "${file.name}" berhasil diunggah! Link URL otomatis terisi.`)
       }
@@ -530,7 +566,7 @@ export default function AdminAkuntansiManajemenPage() {
                     {unitCostImage && (
                       <button
                         type="button"
-                        onClick={() => setUnitCostImage('')}
+                        onClick={handleRemoveUnitCostImage}
                         className="text-rose-600 hover:text-rose-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 size={13} /> Hapus Gambar
@@ -822,7 +858,7 @@ export default function AdminAkuntansiManajemenPage() {
                     {monevKsoImage && (
                       <button
                         type="button"
-                        onClick={() => setMonevKsoImage('')}
+                        onClick={handleRemoveMonevImage}
                         className="text-rose-600 hover:text-rose-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 size={13} /> Hapus Gambar

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
 import { Upload, Trash2, FileText, Plus, ExternalLink, Link as LinkIcon } from 'lucide-react'
 import Link from 'next/link'
 
@@ -161,11 +162,8 @@ export default function AdminDownloadDokumenPage() {
         await supabase.from('financial_reports_data').delete().eq('category', 'unduh_dokumen').eq('item_name', item.id)
       }
 
-      if (item.file_url && item.file_url.includes('rscm-files')) {
-        const fileName = item.file_url.split('/').pop()
-        if (fileName) {
-          await supabase.storage.from('rscm-files').remove([fileName])
-        }
+      if (item.file_url) {
+        await deleteFileFromStorage(supabase, item.file_url)
       }
       loadData()
     } catch (err: any) {

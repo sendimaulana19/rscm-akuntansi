@@ -1,8 +1,8 @@
 'use client'
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { FileCheck, Clock, FileText, Info, Filter, Sparkles, RotateCcw, ChevronDown, Check, X, Search, Calendar, ArrowRightLeft, BarChart3 } from 'lucide-react'
-import { VerifikasiPieChart, VerifikasiLineChart, VerifikasiBarChart, SlaLineChart, SlaPieChart, BaTutupTagihanLineChart, BaTutupTagihanPieChart, formatPeriodeLabel, formatBulanDanTahun } from './VerifikasiCharts'
+import { FileCheck, Clock, FileText, Info, Filter, Sparkles, RotateCcw, ChevronDown, Check, X, Search, Calendar, ArrowRightLeft, BarChart3, TrendingUp, FileDown, FileUp } from 'lucide-react'
+import { VerifikasiPieChart, VerifikasiLineChart, VerifikasiBarChart, VerifikasiColumnComparisonChart, VerifikasiHorizontalBarComparisonChart, SlaLineChart, SlaSectionLineChart, SlaPieChart, BaTutupTagihanLineChart, BaTutupTagihanPieChart, JenisTagihanPieChart, BaJenisTagihanColumnChart, BaProgressLineChart, JenisTagihanItem, JENIS_TAGIHAN_PALETTE, formatPeriodeLabel, formatBulanDanTahun } from './VerifikasiCharts'
 
 const NAMA_BULAN = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -12,6 +12,11 @@ const NAMA_BULAN = [
 const BULAN_SINGKAT = [
   'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
   'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'
+]
+
+const BULAN_TABEL_SLA = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+  'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
 ]
 
 export interface MonthData {
@@ -58,9 +63,19 @@ export interface MonthSlaData {
 export interface YearSlaData {
   tahun: number
   header_text?: string
+  judul_internal?: string
+  keterangan_internal?: string
+  judul_eksternal?: string
+  keterangan_eksternal?: string
   judul_tabel?: string
   keterangan_capaian?: string
   months: MonthSlaData[]
+  judul_pengambilan?: string
+  keterangan_pengambilan?: string
+  months_pengambilan?: MonthSlaData[]
+  judul_pengembalian?: string
+  keterangan_pengembalian?: string
+  months_pengembalian?: MonthSlaData[]
 }
 
 export interface MonthBaTutupTagihanData {
@@ -77,10 +92,27 @@ export interface MonthBaTutupTagihanData {
 export interface YearBaTutupTagihanData {
   tahun: number
   header_text?: string
+  judul_jenis_tagihan?: string
+  jenis_tagihan_items?: JenisTagihanItem[]
+  keterangan_jenis_tagihan?: string
   judul_tabel?: string
   keterangan?: string
   months: MonthBaTutupTagihanData[]
+  judul_nominal?: string
+  keterangan_nominal?: string
+  months_nominal?: MonthBaTutupTagihanData[]
 }
+
+const defaultJenisTagihanItems: JenisTagihanItem[] = []
+
+const defaultBaHeader = 'Berita Acara (BA) Tutup Tagihan memantau rekapitulasi proses penyelesaian administrasi dan penerbitan BA tagihan penyedia di RSUPN Dr. Cipto Mangunkusumo.'
+const defaultJudulJenisTagihan = 'Jenis Tagihan'
+const defaultKetJenisTagihan = 'Rekapitulasi proporsi tagihan yang masuk ke RSCM berdasarkan klasifikasi dan kelompok kebutuhan belanja operasional, perbekalan farmasi, serta layanan medis.'
+const defaultBaJudul = 'BA Tutup Tagihan Berdasarkan Proses'
+const defaultBaKet = 'Rekapitulasi status BA Tutup Tagihan mencakup pemantauan konfirmasi penyedia, tahapan penagihan, proses penerbitan Berita Acara, hingga realisasi penerbitan BA untuk memastikan ketertiban administrasi keuangan RSCM.'
+const defaultJudulNominal = 'BA Tutup Tagihan Berdasarkan Nominal (Rp)'
+const defaultKetNominal = 'Monitoring nominal penyelesaian Berita Acara (BA) Tutup Tagihan berdasarkan total nilai penagihan dari penyedia/vendor barang dan jasa di lingkungan RSUPN Dr. Cipto Mangunkusumo.'
+
 
 const defaultJudulKeseluruhan = 'Catatan Dokumen Tagihan Keseluruhan'
 const defaultJudulInternal = 'Catatan Dokumen Tagihan Internal'
@@ -655,7 +687,7 @@ function PeriodePresetFilter({ selectedMonths, onChange, onApplyToAll }: Periode
 }
 
 interface ComparisonDropdownPickerProps {
-  label: string
+  label?: string
   year: number
   onYearChange: (y: number) => void
   months: string[]
@@ -717,10 +749,12 @@ function ComparisonDropdownPicker({
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 relative font-nav" ref={dropdownRef}>
-      {/* Badge Label Periode */}
-      <span className="text-[11px] font-black uppercase tracking-wider text-[#00282b] bg-white px-2.5 py-1.5 rounded-xl border border-gray-200 shadow-xs">
-        {label}
-      </span>
+      {/* Badge Label Periode (Hanya tampil jika label diberikan) */}
+      {label && label.trim().length > 0 && (
+        <span className="text-[11px] font-black uppercase tracking-wider text-[#00282b] bg-white px-2.5 py-1.5 rounded-xl border border-gray-200 shadow-xs">
+          {label}
+        </span>
+      )}
 
       {/* Selector Tahun */}
       <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-200 shadow-xs">
@@ -993,6 +1027,16 @@ export default function AkuntansiVerifikasiClient({
     }), { jumlah_dokumen: 0, proses: 0, lolos: 0 })
   }, [keseluruhanTableData])
 
+  const keseluruhanLineChartData = useMemo(() => {
+    return keseluruhanTableData.map(m => ({
+      bulan: m.bulan,
+      bulanSingkat: BULAN_SINGKAT[m.bulan_num - 1] || m.bulan.substring(0, 3),
+      jumlah_dokumen: m.jumlah_dokumen,
+      proses: m.proses,
+      lolos: m.lolos,
+    }))
+  }, [keseluruhanTableData])
+
   // 2. DATA INTERNAL (Hanya tampilkan bulan yang ADA DATA yang diinput!)
   const internalTableData = useMemo(() => {
     return yearData.months
@@ -1070,79 +1114,69 @@ export default function AkuntansiVerifikasiClient({
   const labelA = useMemo(() => formatBulanDanTahun(compMonthsA, compYearA), [compMonthsA, compYearA])
   const labelB = useMemo(() => formatBulanDanTahun(compMonthsB, compYearB), [compMonthsB, compYearB])
 
-  // Internal Comparison Data
-  const internalComp = useMemo(() => {
+  // Unified Comparison Data (Internal, Eksternal & Keseluruhan)
+  const comparisonItems = useMemo(() => {
     const allMonths = Array.from(new Set([...compMonthsA, ...compMonthsB])).sort(
       (a, b) => NAMA_BULAN.indexOf(a) - NAMA_BULAN.indexOf(b)
     )
 
-    const items = allMonths.map(bulan => {
-      const isA = compMonthsA.includes(bulan)
-      const isB = compMonthsB.includes(bulan)
+    return allMonths.map(bulan => {
+      const isIncludedA = compMonthsA.includes(bulan)
+      const isIncludedB = compMonthsB.includes(bulan)
 
       const mA = compDataA.months.find(m => m.bulan === bulan)
       const mB = compDataB.months.find(m => m.bulan === bulan)
 
-      const valA = isA ? (mA?.internal?.jumlah_dokumen || 0) : 0
-      const valB = isB ? (mB?.internal?.jumlah_dokumen || 0) : 0
+      const internalA = isIncludedA ? (mA?.internal?.jumlah_dokumen || 0) : 0
+      const eksternalA = isIncludedA ? (mA?.eksternal?.jumlah_dokumen || 0) : 0
+      const keseluruhanA = internalA + eksternalA
+
+      const internalB = isIncludedB ? (mB?.internal?.jumlah_dokumen || 0) : 0
+      const eksternalB = isIncludedB ? (mB?.eksternal?.jumlah_dokumen || 0) : 0
+      const keseluruhanB = internalB + eksternalB
 
       return {
         bulan,
         bulanSingkat: BULAN_SINGKAT[NAMA_BULAN.indexOf(bulan)] || bulan.substring(0, 3),
-        valA,
-        valB,
-        isIncludedA: isA,
-        isIncludedB: isB,
+        internalA,
+        eksternalA,
+        keseluruhanA,
+        internalB,
+        eksternalB,
+        keseluruhanB,
+        isIncludedA,
+        isIncludedB,
       }
     })
-
-    const totalA = compDataA.months
-      .filter(m => compMonthsA.includes(m.bulan))
-      .reduce((sum, m) => sum + (m.internal?.jumlah_dokumen || 0), 0)
-
-    const totalB = compDataB.months
-      .filter(m => compMonthsB.includes(m.bulan))
-      .reduce((sum, m) => sum + (m.internal?.jumlah_dokumen || 0), 0)
-
-    return { items, totalA, totalB }
   }, [compDataA, compDataB, compMonthsA, compMonthsB])
 
-  // Eksternal Comparison Data
-  const eksternalComp = useMemo(() => {
-    const allMonths = Array.from(new Set([...compMonthsA, ...compMonthsB])).sort(
-      (a, b) => NAMA_BULAN.indexOf(a) - NAMA_BULAN.indexOf(b)
-    )
+  const totalCompInternalA = useMemo(() => {
+    return compDataA.months
+      .filter(m => compMonthsA.includes(m.bulan))
+      .reduce((sum, m) => sum + (m.internal?.jumlah_dokumen || 0), 0)
+  }, [compDataA, compMonthsA])
 
-    const items = allMonths.map(bulan => {
-      const isA = compMonthsA.includes(bulan)
-      const isB = compMonthsB.includes(bulan)
-
-      const mA = compDataA.months.find(m => m.bulan === bulan)
-      const mB = compDataB.months.find(m => m.bulan === bulan)
-
-      const valA = isA ? (mA?.eksternal?.jumlah_dokumen || 0) : 0
-      const valB = isB ? (mB?.eksternal?.jumlah_dokumen || 0) : 0
-
-      return {
-        bulan,
-        bulanSingkat: BULAN_SINGKAT[NAMA_BULAN.indexOf(bulan)] || bulan.substring(0, 3),
-        valA,
-        valB,
-        isIncludedA: isA,
-        isIncludedB: isB,
-      }
-    })
-
-    const totalA = compDataA.months
+  const totalCompEksternalA = useMemo(() => {
+    return compDataA.months
       .filter(m => compMonthsA.includes(m.bulan))
       .reduce((sum, m) => sum + (m.eksternal?.jumlah_dokumen || 0), 0)
+  }, [compDataA, compMonthsA])
 
-    const totalB = compDataB.months
+  const totalCompKeseluruhanA = totalCompInternalA + totalCompEksternalA
+
+  const totalCompInternalB = useMemo(() => {
+    return compDataB.months
+      .filter(m => compMonthsB.includes(m.bulan))
+      .reduce((sum, m) => sum + (m.internal?.jumlah_dokumen || 0), 0)
+  }, [compDataB, compMonthsB])
+
+  const totalCompEksternalB = useMemo(() => {
+    return compDataB.months
       .filter(m => compMonthsB.includes(m.bulan))
       .reduce((sum, m) => sum + (m.eksternal?.jumlah_dokumen || 0), 0)
+  }, [compDataB, compMonthsB])
 
-    return { items, totalA, totalB }
-  }, [compDataA, compDataB, compMonthsA, compMonthsB])
+  const totalCompKeseluruhanB = totalCompInternalB + totalCompEksternalB
 
   // ================= 5. STATE & DATA SLA (CAPAIAN) =================
   const availableSlaYears = useMemo(() => {
@@ -1154,10 +1188,21 @@ export default function AkuntansiVerifikasiClient({
   }, [initialSlaDataList])
 
   const [selectedYearSla, setSelectedYearSla] = useState<number>(availableSlaYears[0] || new Date().getFullYear())
-  const [selectedMonthsSla, setSelectedMonthsSla] = useState<string[]>(NAMA_BULAN)
+  const [selectedMonthsSlaInternal, setSelectedMonthsSlaInternal] = useState<string[]>(NAMA_BULAN)
+  const [selectedMonthsSlaEksternal, setSelectedMonthsSlaEksternal] = useState<string[]>(NAMA_BULAN)
+
+  const applySlaInternalToAll = () => {
+    setSelectedMonthsSlaEksternal(selectedMonthsSlaInternal)
+  }
+  const applySlaEksternalToAll = () => {
+    setSelectedMonthsSlaInternal(selectedMonthsSlaEksternal)
+  }
 
   const defaultSlaHeader = 'Service Level Agreement (SLA) Verifikasi Dokumen Tagihan mengukur ketepatan waktu dan efektivitas proses verifikasi tagihan internal maupun eksternal sesuai standar layanan operasional RSCM.'
-  const defaultSlaKet = 'Capaian persentase SLA verifikasi dokumen tagihan mencerminkan kepatuhan terhadap standar waktu layanan verifikasi. Tingkat capaian yang konsisten mendukung kelancaran arus kas dan kepuasan mitra kerja sama.'
+  const defaultSlaJudulInternal = 'SLA Dokumen Internal'
+  const defaultSlaKetInternal = 'Pencapaian Service Level Agreement (SLA) untuk dokumen tagihan internal mencakup kepatuhan terhadap standar waktu proses verifikasi, waktu pengambilan dokumen oleh unit kerja, dan waktu pengembalian berkas administrasi di lingkungan RSCM.'
+  const defaultSlaJudulEksternal = 'SLA Dokumen Eksternal'
+  const defaultSlaKetEksternal = 'Pencapaian Service Level Agreement (SLA) untuk dokumen tagihan eksternal mencakup kepatuhan terhadap standar waktu proses verifikasi tagihan rekanan/vendor, waktu pengambilan dokumen, serta penyelesaian pengembalian dokumen administrasi penyedia pihak ketiga.'
 
   const getSlaYearData = (year: number): YearSlaData => {
     const found = (initialSlaDataList || []).find(d => d.tahun === year)
@@ -1165,52 +1210,155 @@ export default function AkuntansiVerifikasiClient({
       return {
         ...found,
         header_text: found.header_text || defaultSlaHeader,
-        judul_tabel: found.judul_tabel || 'Capaian',
-        keterangan_capaian: found.keterangan_capaian || defaultSlaKet,
-        months: found.months || []
+        judul_internal: found.judul_internal || defaultSlaJudulInternal,
+        keterangan_internal: found.keterangan_internal || found.keterangan_capaian || defaultSlaKetInternal,
+        judul_eksternal: found.judul_eksternal || defaultSlaJudulEksternal,
+        keterangan_eksternal: found.keterangan_eksternal || found.keterangan_pengambilan || defaultSlaKetEksternal,
+        months: found.months || [],
+        months_pengambilan: found.months_pengambilan || [],
+        months_pengembalian: found.months_pengembalian || [],
       }
     }
     return {
       tahun: year,
       header_text: defaultSlaHeader,
-      judul_tabel: 'Capaian',
-      keterangan_capaian: defaultSlaKet,
-      months: []
+      judul_internal: defaultSlaJudulInternal,
+      keterangan_internal: defaultSlaKetInternal,
+      judul_eksternal: defaultSlaJudulEksternal,
+      keterangan_eksternal: defaultSlaKetEksternal,
+      months: [],
+      months_pengambilan: [],
+      months_pengembalian: [],
     }
   }
 
   const yearSlaData = useMemo(() => getSlaYearData(selectedYearSla), [initialSlaDataList, selectedYearSla])
 
-  const slaTableData = useMemo(() => {
-    return yearSlaData.months
-      .filter(m => selectedMonthsSla.includes(m.bulan))
-      .filter(m => m.has_data || m.internal > 0 || m.eksternal > 0 || m.keseluruhan > 0)
-  }, [yearSlaData, selectedMonthsSla])
+  // 1. DATA SLA DOKUMEN INTERNAL
+  const slaInternalChartData = useMemo(() => {
+    return selectedMonthsSlaInternal
+      .map(bulan => {
+        const idx = NAMA_BULAN.indexOf(bulan)
+        const mVer = (yearSlaData.months || []).find(m => m.bulan === bulan)
+        const mPeng = (yearSlaData.months_pengambilan || []).find(m => m.bulan === bulan)
+        const mKem = (yearSlaData.months_pengembalian || []).find(m => m.bulan === bulan)
 
-  const slaAverages = useMemo(() => {
-    if (slaTableData.length === 0) {
-      return { internal: 0, eksternal: 0, keseluruhan: 0 }
-    }
-    const sumInt = slaTableData.reduce((acc, m) => acc + (m.internal || 0), 0)
-    const sumEks = slaTableData.reduce((acc, m) => acc + (m.eksternal || 0), 0)
-    const sumAll = slaTableData.reduce((acc, m) => acc + (m.keseluruhan || 0), 0)
-    const count = slaTableData.length
-    return {
-      internal: sumInt / count,
-      eksternal: sumEks / count,
-      keseluruhan: sumAll / count,
-    }
-  }, [slaTableData])
+        const verifikasi = mVer ? mVer.internal : 0
+        const pengambilan = mPeng ? mPeng.internal : 0
+        const pengembalian = mKem ? mKem.internal : 0
+        const has_data = Boolean(
+          (mVer?.has_data && verifikasi > 0) ||
+          (mPeng?.has_data && pengambilan > 0) ||
+          (mKem?.has_data && pengembalian > 0) ||
+          verifikasi > 0 ||
+          pengambilan > 0 ||
+          pengembalian > 0
+        )
 
-  const slaLineChartData = useMemo(() => {
-    return slaTableData.map(m => ({
-      bulan: m.bulan,
-      bulanSingkat: BULAN_SINGKAT[m.bulan_num - 1] || m.bulan.substring(0, 3),
-      internal: m.internal || 0,
-      eksternal: m.eksternal || 0,
-      keseluruhan: m.keseluruhan || 0,
-    }))
-  }, [slaTableData])
+        return {
+          bulan,
+          bulanSingkat: BULAN_TABEL_SLA[idx] || bulan.substring(0, 3),
+          verifikasi,
+          pengambilan,
+          pengembalian,
+          has_data,
+        }
+      })
+      .filter(d => d.has_data)
+  }, [yearSlaData, selectedMonthsSlaInternal])
+
+  const slaInternalRowVerifikasi = useMemo(() => {
+    const values = NAMA_BULAN.map(bulan => {
+      const m = (yearSlaData.months || []).find(x => x.bulan === bulan)
+      return m ? m.internal : 0
+    })
+    const selectedValues = values.filter((v, idx) => selectedMonthsSlaInternal.includes(NAMA_BULAN[idx]) && v > 0)
+    const avg = selectedValues.length > 0 ? selectedValues.reduce((a, b) => a + b, 0) / selectedValues.length : 0
+    return { name: 'SLA Verifikasi', color: '#01bcce', values, avg }
+  }, [yearSlaData.months, selectedMonthsSlaInternal])
+
+  const slaInternalRowPengambilan = useMemo(() => {
+    const values = NAMA_BULAN.map(bulan => {
+      const m = (yearSlaData.months_pengambilan || []).find(x => x.bulan === bulan)
+      return m ? m.internal : 0
+    })
+    const selectedValues = values.filter((v, idx) => selectedMonthsSlaInternal.includes(NAMA_BULAN[idx]) && v > 0)
+    const avg = selectedValues.length > 0 ? selectedValues.reduce((a, b) => a + b, 0) / selectedValues.length : 0
+    return { name: 'SLA Pengambilan', color: '#268484', values, avg }
+  }, [yearSlaData.months_pengambilan, selectedMonthsSlaInternal])
+
+  const slaInternalRowPengembalian = useMemo(() => {
+    const values = NAMA_BULAN.map(bulan => {
+      const m = (yearSlaData.months_pengembalian || []).find(x => x.bulan === bulan)
+      return m ? m.internal : 0
+    })
+    const selectedValues = values.filter((v, idx) => selectedMonthsSlaInternal.includes(NAMA_BULAN[idx]) && v > 0)
+    const avg = selectedValues.length > 0 ? selectedValues.reduce((a, b) => a + b, 0) / selectedValues.length : 0
+    return { name: 'SLA Pengembalian', color: '#d0db41', values, avg }
+  }, [yearSlaData.months_pengembalian, selectedMonthsSlaInternal])
+
+  // 2. DATA SLA DOKUMEN EKSTERNAL
+  const slaEksternalChartData = useMemo(() => {
+    return selectedMonthsSlaEksternal
+      .map(bulan => {
+        const idx = NAMA_BULAN.indexOf(bulan)
+        const mVer = (yearSlaData.months || []).find(m => m.bulan === bulan)
+        const mPeng = (yearSlaData.months_pengambilan || []).find(m => m.bulan === bulan)
+        const mKem = (yearSlaData.months_pengembalian || []).find(m => m.bulan === bulan)
+
+        const verifikasi = mVer ? mVer.eksternal : 0
+        const pengambilan = mPeng ? mPeng.eksternal : 0
+        const pengembalian = mKem ? mKem.eksternal : 0
+        const has_data = Boolean(
+          (mVer?.has_data && verifikasi > 0) ||
+          (mPeng?.has_data && pengambilan > 0) ||
+          (mKem?.has_data && pengembalian > 0) ||
+          verifikasi > 0 ||
+          pengambilan > 0 ||
+          pengembalian > 0
+        )
+
+        return {
+          bulan,
+          bulanSingkat: BULAN_TABEL_SLA[idx] || bulan.substring(0, 3),
+          verifikasi,
+          pengambilan,
+          pengembalian,
+          has_data,
+        }
+      })
+      .filter(d => d.has_data)
+  }, [yearSlaData, selectedMonthsSlaEksternal])
+
+  const slaEksternalRowVerifikasi = useMemo(() => {
+    const values = NAMA_BULAN.map(bulan => {
+      const m = (yearSlaData.months || []).find(x => x.bulan === bulan)
+      return m ? m.eksternal : 0
+    })
+    const selectedValues = values.filter((v, idx) => selectedMonthsSlaEksternal.includes(NAMA_BULAN[idx]) && v > 0)
+    const avg = selectedValues.length > 0 ? selectedValues.reduce((a, b) => a + b, 0) / selectedValues.length : 0
+    return { name: 'SLA Verifikasi', color: '#01bcce', values, avg }
+  }, [yearSlaData.months, selectedMonthsSlaEksternal])
+
+  const slaEksternalRowPengambilan = useMemo(() => {
+    const values = NAMA_BULAN.map(bulan => {
+      const m = (yearSlaData.months_pengambilan || []).find(x => x.bulan === bulan)
+      return m ? m.eksternal : 0
+    })
+    const selectedValues = values.filter((v, idx) => selectedMonthsSlaEksternal.includes(NAMA_BULAN[idx]) && v > 0)
+    const avg = selectedValues.length > 0 ? selectedValues.reduce((a, b) => a + b, 0) / selectedValues.length : 0
+    return { name: 'SLA Pengambilan', color: '#268484', values, avg }
+  }, [yearSlaData.months_pengambilan, selectedMonthsSlaEksternal])
+
+  const slaEksternalRowPengembalian = useMemo(() => {
+    const values = NAMA_BULAN.map(bulan => {
+      const m = (yearSlaData.months_pengembalian || []).find(x => x.bulan === bulan)
+      return m ? m.eksternal : 0
+    })
+    const selectedValues = values.filter((v, idx) => selectedMonthsSlaEksternal.includes(NAMA_BULAN[idx]) && v > 0)
+    const avg = selectedValues.length > 0 ? selectedValues.reduce((a, b) => a + b, 0) / selectedValues.length : 0
+    return { name: 'SLA Pengembalian', color: '#d0db41', values, avg }
+  }, [yearSlaData.months_pengembalian, selectedMonthsSlaEksternal])
 
   // ================= 6. STATE & DATA BA TUTUP TAGIHAN =================
   const availableBaYears = useMemo(() => {
@@ -1223,33 +1371,70 @@ export default function AkuntansiVerifikasiClient({
 
   const [selectedYearBa, setSelectedYearBa] = useState<number>(availableBaYears[0] || new Date().getFullYear())
   const [selectedMonthsBa, setSelectedMonthsBa] = useState<string[]>(NAMA_BULAN)
-
-  const defaultBaHeader = 'Berita Acara (BA) Tutup Tagihan memantau rekapitulasi proses penyelesaian administrasi dan penerbitan BA tagihan penyedia di RSUPN Dr. Cipto Mangunkusumo.'
-  const defaultBaJudul = 'BA Tutup Tagihan'
-  const defaultBaKet = 'Rekapitulasi status BA Tutup Tagihan mencakup pemantauan konfirmasi penyedia, tahapan penagihan, proses penerbitan Berita Acara, hingga realisasi penerbitan BA untuk memastikan ketertiban administrasi keuangan RSCM.'
+  const [selectedMonthsNominal, setSelectedMonthsNominal] = useState<string[]>(NAMA_BULAN)
 
   const getBaYearData = (year: number): YearBaTutupTagihanData => {
     const found = (initialBaDataList || []).find(d => d.tahun === year)
     if (found) {
+      const rawJudulTabel = found.judul_tabel
+      const normalizedJudulTabel = (!rawJudulTabel || rawJudulTabel === 'BA Tutup Tagihan')
+        ? defaultBaJudul
+        : rawJudulTabel
+
+      const rawJudulNominal = found.judul_nominal
+      const normalizedJudulNominal = (!rawJudulNominal || rawJudulNominal === 'Nominal BA Tutup Tagihan')
+        ? defaultJudulNominal
+        : rawJudulNominal
+
       return {
         ...found,
         header_text: found.header_text || defaultBaHeader,
-        judul_tabel: found.judul_tabel || defaultBaJudul,
+        judul_jenis_tagihan: found.judul_jenis_tagihan || defaultJudulJenisTagihan,
+        jenis_tagihan_items: found.jenis_tagihan_items !== undefined ? found.jenis_tagihan_items : [],
+        keterangan_jenis_tagihan: found.keterangan_jenis_tagihan || defaultKetJenisTagihan,
+        judul_tabel: normalizedJudulTabel,
         keterangan: found.keterangan || defaultBaKet,
-        months: found.months || []
+        months: found.months || [],
+        judul_nominal: normalizedJudulNominal,
+        keterangan_nominal: found.keterangan_nominal || defaultKetNominal,
+        months_nominal: found.months_nominal || []
       }
     }
     return {
       tahun: year,
       header_text: defaultBaHeader,
+      judul_jenis_tagihan: defaultJudulJenisTagihan,
+      jenis_tagihan_items: [],
+      keterangan_jenis_tagihan: defaultKetJenisTagihan,
       judul_tabel: defaultBaJudul,
       keterangan: defaultBaKet,
-      months: []
+      months: [],
+      judul_nominal: defaultJudulNominal,
+      keterangan_nominal: defaultKetNominal,
+      months_nominal: []
     }
   }
 
   const yearBaData = useMemo(() => getBaYearData(selectedYearBa), [initialBaDataList, selectedYearBa])
 
+  // ================= DATA SECTION 1: JENIS TAGIHAN =================
+  const jenisTagihanItems = useMemo(() => {
+    return (yearBaData.jenis_tagihan_items !== undefined)
+      ? yearBaData.jenis_tagihan_items
+      : []
+  }, [yearBaData])
+
+  const totalJenisTagihanPenyedia = useMemo(() => {
+    return jenisTagihanItems.reduce((acc, it) => acc + (it.jumlah_penyedia ?? it.jumlah ?? 0), 0)
+  }, [jenisTagihanItems])
+
+  const totalJenisTagihanTerbitBa = useMemo(() => {
+    return jenisTagihanItems.reduce((acc, it) => acc + (it.sudah_terbit_ba ?? 0), 0)
+  }, [jenisTagihanItems])
+
+  const totalJenisTagihan = totalJenisTagihanPenyedia
+
+  // ================= DATA SECTION 2: BA TUTUP TAGIHAN (PENYEDIA) =================
   const baTableData = useMemo(() => {
     return yearBaData.months
       .filter(m => selectedMonthsBa.includes(m.bulan))
@@ -1257,12 +1442,6 @@ export default function AkuntansiVerifikasiClient({
   }, [yearBaData, selectedMonthsBa])
 
   const [selectedBaMonthRow, setSelectedBaMonthRow] = useState<string | null>(null)
-
-  // Baris terakhir/terbaru bulan yang diinput (periode terbaru pada data BA yang difilter)
-  const latestBaRow = useMemo(() => {
-    if (!baTableData || baTableData.length === 0) return null
-    return baTableData[baTableData.length - 1]
-  }, [baTableData])
 
   // Periode aktif untuk highlight dan tampilan pie chart (secara default adalah periode terakhir/terbaru yang diinput)
   const activeBaRow = useMemo(() => {
@@ -1310,6 +1489,96 @@ export default function AkuntansiVerifikasiClient({
       sudah_terbit_ba: m.sudah_terbit_ba || 0,
     }))
   }, [baTableData])
+
+  // Section 2: Line Chart Progres Persentase (Target 100%)
+  const baProgressLineChartData = useMemo(() => {
+    return baTableData.map(m => {
+      const total = m.total_penyedia || 0
+      const terbit = m.sudah_terbit_ba || 0
+      const pct = total > 0 ? (terbit / total) * 100 : 0
+      return {
+        bulan: m.bulan,
+        bulanSingkat: BULAN_SINGKAT[m.bulan_num - 1] || m.bulan.substring(0, 3),
+        totalRaw: total,
+        terbitRaw: terbit,
+        totalPct: 100,
+        terbitPct: Number(pct.toFixed(1)),
+      }
+    })
+  }, [baTableData])
+
+  // ================= DATA SECTION 3: NOMINAL BA TUTUP TAGIHAN (TRANSAKSI) =================
+  const [selectedNominalMonthRow, setSelectedNominalMonthRow] = useState<string | null>(null)
+
+  const nominalTableData = useMemo(() => {
+    return (yearBaData.months_nominal || [])
+      .filter(m => selectedMonthsNominal.includes(m.bulan))
+      .filter(m => m.has_data || m.total_penyedia > 0 || m.belum_dikonfirmasi > 0 || m.proses_penagihan > 0 || m.proses_pembuatan_ba > 0 || m.sudah_terbit_ba > 0)
+  }, [yearBaData, selectedMonthsNominal])
+
+  const activeNominalRow = useMemo(() => {
+    if (!nominalTableData || nominalTableData.length === 0) return null
+    if (selectedNominalMonthRow) {
+      const found = nominalTableData.find(r => r.bulan === selectedNominalMonthRow)
+      if (found) return found
+    }
+    return nominalTableData[nominalTableData.length - 1]
+  }, [nominalTableData, selectedNominalMonthRow])
+
+  const nominalTotals = useMemo(() => {
+    if (nominalTableData.length === 0) {
+      return {
+        total_penyedia: 0,
+        belum_dikonfirmasi: 0,
+        proses_penagihan: 0,
+        proses_pembuatan_ba: 0,
+        sudah_terbit_ba: 0,
+      }
+    }
+    return nominalTableData.reduce((acc, m) => ({
+      total_penyedia: acc.total_penyedia + (m.total_penyedia || 0),
+      belum_dikonfirmasi: acc.belum_dikonfirmasi + (m.belum_dikonfirmasi || 0),
+      proses_penagihan: acc.proses_penagihan + (m.proses_penagihan || 0),
+      proses_pembuatan_ba: acc.proses_pembuatan_ba + (m.proses_pembuatan_ba || 0),
+      sudah_terbit_ba: acc.sudah_terbit_ba + (m.sudah_terbit_ba || 0),
+    }), {
+      total_penyedia: 0,
+      belum_dikonfirmasi: 0,
+      proses_penagihan: 0,
+      proses_pembuatan_ba: 0,
+      sudah_terbit_ba: 0,
+    })
+  }, [nominalTableData])
+
+  const nominalLineChartData = useMemo(() => {
+    return nominalTableData.map(m => ({
+      bulan: m.bulan,
+      bulanSingkat: BULAN_SINGKAT[m.bulan_num - 1] || m.bulan.substring(0, 3),
+      total_penyedia: m.total_penyedia || 0,
+      belum_dikonfirmasi: m.belum_dikonfirmasi || 0,
+      proses_penagihan: m.proses_penagihan || 0,
+      proses_pembuatan_ba: m.proses_pembuatan_ba || 0,
+      sudah_terbit_ba: m.sudah_terbit_ba || 0,
+    }))
+  }, [nominalTableData])
+
+  // Section 3: Line Chart Progres Persentase Nominal (Target 100%)
+  const nominalProgressLineChartData = useMemo(() => {
+    return nominalTableData.map(m => {
+      const total = m.total_penyedia || 0
+      const terbit = m.sudah_terbit_ba || 0
+      const pct = total > 0 ? (terbit / total) * 100 : 0
+      return {
+        bulan: m.bulan,
+        bulanSingkat: BULAN_SINGKAT[m.bulan_num - 1] || m.bulan.substring(0, 3),
+        totalRaw: total,
+        terbitRaw: terbit,
+        totalPct: 100,
+        terbitPct: Number(pct.toFixed(1)),
+      }
+    })
+  }, [nominalTableData])
+
 
   return (
     <>
@@ -1569,12 +1838,11 @@ export default function AkuntansiVerifikasiClient({
                       </div>
                     </div>
 
-                    {/* Kolom Kanan: Pie Chart (6 Kolom, h-full agar simetris sempurna) */}
+                    {/* Kolom Kanan: Line Chart (6 Kolom, h-full agar simetris sempurna) */}
                     <div className="lg:col-span-6 h-full flex flex-col justify-between">
-                      <VerifikasiPieChart
-                        proses={keseluruhanTotal.proses}
-                        lolos={keseluruhanTotal.lolos}
-                        title="Proporsi Dokumen Tagihan"
+                      <VerifikasiLineChart
+                        data={keseluruhanLineChartData}
+                        title="Tren Dokumen Tagihan Keseluruhan"
                         periodeLabel={formatPeriodeLabel(selectedMonthsKeseluruhan)}
                       />
                     </div>
@@ -1937,12 +2205,11 @@ export default function AkuntansiVerifikasiClient({
                     </h2>
                   </div>
 
-                  {/* FILTER DROPDOWN: BULAN & TAHUN PERIODE 1 + TULISAN "BANDINGKAN" + BULAN & TAHUN PERIODE 2 (Ramping) */}
-                  <div className="bg-white rounded-2xl py-2 px-4 sm:px-5 border border-gray-200 mb-3.5 shadow-xs font-nav">
+                  {/* FILTER DROPDOWN: BULAN & TAHUN (Tanpa Label Periode 1 & Periode 2) */}
+                  <div className="bg-white rounded-2xl py-2 px-4 sm:px-5 border border-gray-200 mb-5 shadow-xs font-nav">
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-3 sm:gap-5">
-                      {/* Dropdown List Bulan dan Tahun Periode 1 */}
+                      {/* Dropdown List Bulan dan Tahun Periode A */}
                       <ComparisonDropdownPicker
-                        label="Periode 1"
                         year={compYearA}
                         onYearChange={setCompYearA}
                         months={compMonthsA}
@@ -1960,9 +2227,8 @@ export default function AkuntansiVerifikasiClient({
                         </div>
                       </div>
 
-                      {/* Dropdown List Bulan dan Tahun Periode 2 */}
+                      {/* Dropdown List Bulan dan Tahun Periode B */}
                       <ComparisonDropdownPicker
-                        label="Periode 2"
                         year={compYearB}
                         onYearChange={setCompYearB}
                         months={compMonthsB}
@@ -1972,222 +2238,180 @@ export default function AkuntansiVerifikasiClient({
                     </div>
                   </div>
 
-                  {/* 2 BAGIAN DIAGRAM BATANG & TABEL: INTERNAL & EKSTERNAL */}
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                    
-                    {/* 1. BAGIAN INTERNAL */}
-                    <div className="flex flex-col gap-2.5 bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200 shadow-xs">
-                      <div className="pb-1.5 border-b border-gray-200 text-center">
-                        <h3 className="font-nav font-black text-sm text-[#00282b] leading-tight">
-                          Perbandingan Dokumen Tagihan Internal
-                        </h3>
-                        <p className="font-nav text-[11px] font-bold text-gray-500 mt-0.5 leading-tight">
-                          {labelA} <span className="text-gray-400 font-normal">vs</span> {labelB}
-                        </p>
-                      </div>
-
-                      {/* Diagram Batang Internal */}
-                      <VerifikasiBarChart
+                  {/* 2 CHARTS: ATAS-BAWAH (COLUMN CHART BULANAN & HORIZONTAL BAR CHART TOTAL) */}
+                  <div className="flex flex-col gap-6 mb-6">
+                    {/* Chart 1: Column Chart (1 Bar = Internal + Eksternal = Keseluruhan, Periode Bersampingan, Angka Internal & Eksternal di dalam bar) */}
+                    <div className="w-full">
+                      <VerifikasiColumnComparisonChart
+                        title="Perbandingan Dokumen Tagihan"
                         labelA={labelA}
-                        totalA={internalComp.totalA}
                         labelB={labelB}
-                        totalB={internalComp.totalB}
-                        items={internalComp.items}
-                        colorA="#01bcce"
-                        colorB="#268484"
+                        yearA={compYearA}
+                        yearB={compYearB}
+                        items={comparisonItems}
+                        colorInternal="#01bcce"
+                        colorEksternal="#268484"
                       />
-
-                      {/* Tabel Perbandingan 4 Kolom Internal */}
-                      <div className="mt-1">
-                        <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
-                          <table className="w-full text-left font-nav text-xs border-collapse">
-                            <thead style={{ background: '#008080' }}>
-                              <tr>
-                                <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                                  Periode
-                                </th>
-                                <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                                  Jumlah Dokumen
-                                </th>
-                                <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                                  Periode
-                                </th>
-                                <th style={{ padding: '11px 14px', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                                  Jumlah Dokumen
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {internalComp.totalA === 0 && internalComp.totalB === 0 ? (
-                                <tr>
-                                  <td colSpan={4} className="py-6 text-center text-gray-400 font-bold text-xs">
-                                    Belum ada data dokumen tagihan internal yang diinput untuk periode ini.
-                                  </td>
-                                </tr>
-                              ) : (
-                                internalComp.items.map((row, idx) => (
-                                  <tr key={row.bulan} className="rowHover" style={{ background: idx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
-                                    <td style={{ padding: '4px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                      {row.isIncludedA ? `${row.bulan} ${compYearA}` : '-'}
-                                    </td>
-                                    <td style={{ padding: '4px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                      {row.isIncludedA ? row.valA.toLocaleString('id-ID') : '-'}
-                                    </td>
-                                    <td style={{ padding: '4px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                      {row.isIncludedB ? `${row.bulan} ${compYearB}` : '-'}
-                                    </td>
-                                    <td style={{ padding: '4px 14px', textAlign: 'center', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                      {row.isIncludedB ? row.valB.toLocaleString('id-ID') : '-'}
-                                    </td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                            {(internalComp.totalA > 0 || internalComp.totalB > 0) && (
-                              <tfoot style={{ background: '#f8fafc', borderTop: '2px solid #00282b', fontWeight: 800 }}>
-                                <tr>
-                                  <td style={{ padding: '7px 14px', textAlign: 'left', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, fontSize: 12 }}>
-                                    Total
-                                  </td>
-                                  <td style={{ padding: '7px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#01bcce', fontWeight: 900, fontSize: 13 }}>
-                                    {internalComp.totalA.toLocaleString('id-ID')}
-                                  </td>
-                                  <td style={{ padding: '7px 14px', textAlign: 'left', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, fontSize: 12 }}>
-                                    Total
-                                  </td>
-                                  <td style={{ padding: '7px 14px', textAlign: 'center', color: '#268484', fontWeight: 900, fontSize: 13 }}>
-                                    {internalComp.totalB.toLocaleString('id-ID')}
-                                  </td>
-                                </tr>
-                              </tfoot>
-                            )}
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* Text Box Catatan di Bawah Tabel Perbandingan Internal (Hanya tampil jika ada kalimat yang diisi) */}
-                      {globalPerbandinganInternal && globalPerbandinganInternal.trim().length > 0 && (
-                        <div className="w-full bg-white rounded-2xl p-3 sm:p-3.5 border border-gray-200 shadow-xs font-nav flex items-start gap-3 transition-all mt-1">
-                          <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                                style={{ background: 'rgba(208,219,65,0.2)', color: '#00282b' }}>
-                            <FileText size={15} />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                              {globalPerbandinganInternal}
-                            </p>
-                          </div>
-                        </div>
-                      )}
                     </div>
 
-                    {/* 2. BAGIAN EKSTERNAL */}
-                    <div className="flex flex-col gap-2.5 bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200 shadow-xs">
-                      <div className="pb-1.5 border-b border-gray-200 text-center">
-                        <h3 className="font-nav font-black text-sm text-[#00282b] leading-tight">
-                          Perbandingan Dokumen Tagihan Eksternal
-                        </h3>
-                        <p className="font-nav text-[11px] font-bold text-gray-500 mt-0.5 leading-tight">
-                          {labelA} <span className="text-gray-400 font-normal">vs</span> {labelB}
-                        </p>
-                      </div>
-
-                      {/* Diagram Batang Eksternal */}
-                      <VerifikasiBarChart
+                    {/* Chart 2: Horizontal Bar Chart (2 Bar Stacked: Internal + Eksternal = Keseluruhan per Periode, Lebih Lebar) */}
+                    <div className="w-full">
+                      <VerifikasiHorizontalBarComparisonChart
+                        title="Perbandingan Total Dokumen Tagihan"
                         labelA={labelA}
-                        totalA={eksternalComp.totalA}
                         labelB={labelB}
-                        totalB={eksternalComp.totalB}
-                        items={eksternalComp.items}
-                        colorA="#01bcce"
-                        colorB="#268484"
+                        internalA={totalCompInternalA}
+                        eksternalA={totalCompEksternalA}
+                        keseluruhanA={totalCompKeseluruhanA}
+                        internalB={totalCompInternalB}
+                        eksternalB={totalCompEksternalB}
+                        keseluruhanB={totalCompKeseluruhanB}
+                        colorInternal="#01bcce"
+                        colorEksternal="#268484"
                       />
-
-                      {/* Tabel Perbandingan 4 Kolom Eksternal */}
-                      <div className="mt-1">
-                        <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
-                          <table className="w-full text-left font-nav text-xs border-collapse">
-                            <thead style={{ background: '#008080' }}>
-                              <tr>
-                                <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                                  Periode
-                                </th>
-                                <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                                  Jumlah Dokumen
-                                </th>
-                                <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                                  Periode
-                                </th>
-                                <th style={{ padding: '11px 14px', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                                  Jumlah Dokumen
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {eksternalComp.totalA === 0 && eksternalComp.totalB === 0 ? (
-                                <tr>
-                                  <td colSpan={4} className="py-6 text-center text-gray-400 font-bold text-xs">
-                                    Belum ada data dokumen tagihan eksternal yang diinput untuk periode ini.
-                                  </td>
-                                </tr>
-                              ) : (
-                                eksternalComp.items.map((row, idx) => (
-                                  <tr key={row.bulan} className="rowHover" style={{ background: idx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
-                                    <td style={{ padding: '4px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                      {row.isIncludedA ? `${row.bulan} ${compYearA}` : '-'}
-                                    </td>
-                                    <td style={{ padding: '4px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                      {row.isIncludedA ? row.valA.toLocaleString('id-ID') : '-'}
-                                    </td>
-                                    <td style={{ padding: '4px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                      {row.isIncludedB ? `${row.bulan} ${compYearB}` : '-'}
-                                    </td>
-                                    <td style={{ padding: '4px 14px', textAlign: 'center', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                      {row.isIncludedB ? row.valB.toLocaleString('id-ID') : '-'}
-                                    </td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                            {(eksternalComp.totalA > 0 || eksternalComp.totalB > 0) && (
-                              <tfoot style={{ background: '#f8fafc', borderTop: '2px solid #00282b', fontWeight: 800 }}>
-                                <tr>
-                                  <td style={{ padding: '7px 14px', textAlign: 'left', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, fontSize: 12 }}>
-                                    Total
-                                  </td>
-                                  <td style={{ padding: '7px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#01bcce', fontWeight: 900, fontSize: 13 }}>
-                                    {eksternalComp.totalA.toLocaleString('id-ID')}
-                                  </td>
-                                  <td style={{ padding: '7px 14px', textAlign: 'left', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, fontSize: 12 }}>
-                                    Total
-                                  </td>
-                                  <td style={{ padding: '7px 14px', textAlign: 'center', color: '#268484', fontWeight: 900, fontSize: 13 }}>
-                                    {eksternalComp.totalB.toLocaleString('id-ID')}
-                                  </td>
-                                </tr>
-                              </tfoot>
-                            )}
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* Text Box Catatan di Bawah Tabel Perbandingan Eksternal (Hanya tampil jika ada kalimat yang diisi) */}
-                      {globalPerbandinganEksternal && globalPerbandinganEksternal.trim().length > 0 && (
-                        <div className="w-full bg-white rounded-2xl p-3 sm:p-3.5 border border-gray-200 shadow-xs font-nav flex items-start gap-3 transition-all mt-1">
-                          <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                                style={{ background: 'rgba(0,40,43,0.1)', color: '#00282b' }}>
-                            <FileText size={15} />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                              {globalPerbandinganEksternal}
-                            </p>
-                          </div>
-                        </div>
-                      )}
                     </div>
-
                   </div>
+
+                  {/* TABEL PERBANDINGAN 8 KOLOM (SESUAI GAMBAR CONTOH) */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs mb-4 font-nav">
+                    <div className="pb-2.5 mb-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <h3 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
+                          Tabel Perbandingan Dokumen Tagihan
+                        </h3>
+                        <p className="font-nav text-xs font-bold text-gray-400 mt-0.5">
+                          {labelA} <span className="font-normal text-gray-300">vs</span> {labelB}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
+                      <table className="w-full text-left font-nav text-xs border-collapse">
+                        {/* Header 8 Kolom: 4 Kolom Periode A + 4 Kolom Periode B */}
+                        <thead style={{ background: '#008080' }}>
+                          <tr>
+                            <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Periode
+                            </th>
+                            <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Internal
+                            </th>
+                            <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Eksternal
+                            </th>
+                            <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '2px solid #00282b', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Keseluruhan
+                            </th>
+                            <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Periode
+                            </th>
+                            <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Internal
+                            </th>
+                            <th style={{ padding: '11px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Eksternal
+                            </th>
+                            <th style={{ padding: '11px 14px', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Keseluruhan
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {comparisonItems.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="py-6 text-center text-gray-400 font-bold text-xs">
+                                Belum ada data dokumen tagihan yang diinput untuk periode ini.
+                              </td>
+                            </tr>
+                          ) : (
+                            comparisonItems.map((row, idx) => (
+                              <tr key={row.bulan} className="rowHover" style={{ background: idx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
+                                {/* Periode A */}
+                                <td style={{ padding: '5px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
+                                  {row.isIncludedA ? `${row.bulanSingkat} ${compYearA}` : '-'}
+                                </td>
+                                <td style={{ padding: '5px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
+                                  {row.isIncludedA ? row.internalA.toLocaleString('id-ID') : '-'}
+                                </td>
+                                <td style={{ padding: '5px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
+                                  {row.isIncludedA ? row.eksternalA.toLocaleString('id-ID') : '-'}
+                                </td>
+                                <td style={{ padding: '5px 14px', textAlign: 'center', borderRight: '2px solid #00282b', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, color: '#00282b', background: idx % 2 === 0 ? '#f0fdfa' : '#e6fffa' }}>
+                                  {row.isIncludedA ? row.keseluruhanA.toLocaleString('id-ID') : '-'}
+                                </td>
+
+                                {/* Periode B */}
+                                <td style={{ padding: '5px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
+                                  {row.isIncludedB ? `${row.bulanSingkat} ${compYearB}` : '-'}
+                                </td>
+                                <td style={{ padding: '5px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
+                                  {row.isIncludedB ? row.internalB.toLocaleString('id-ID') : '-'}
+                                </td>
+                                <td style={{ padding: '5px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
+                                  {row.isIncludedB ? row.eksternalB.toLocaleString('id-ID') : '-'}
+                                </td>
+                                <td style={{ padding: '5px 14px', textAlign: 'center', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, color: '#00282b', background: idx % 2 === 0 ? '#f0fdfa' : '#e6fffa' }}>
+                                  {row.isIncludedB ? row.keseluruhanB.toLocaleString('id-ID') : '-'}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                        {(totalCompInternalA > 0 || totalCompEksternalA > 0 || totalCompInternalB > 0 || totalCompEksternalB > 0) && (
+                          <tfoot style={{ background: '#f8fafc', borderTop: '2px solid #00282b', fontWeight: 800 }}>
+                            <tr>
+                              <td style={{ padding: '8px 14px', textAlign: 'left', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, fontSize: 12 }}>
+                                Total
+                              </td>
+                              <td style={{ padding: '8px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#01bcce', fontWeight: 900, fontSize: 13 }}>
+                                {totalCompInternalA.toLocaleString('id-ID')}
+                              </td>
+                              <td style={{ padding: '8px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#268484', fontWeight: 900, fontSize: 13 }}>
+                                {totalCompEksternalA.toLocaleString('id-ID')}
+                              </td>
+                              <td style={{ padding: '8px 14px', textAlign: 'center', borderRight: '2px solid #00282b', color: '#00282b', fontWeight: 900, fontSize: 13, background: '#e6fffa' }}>
+                                {totalCompKeseluruhanA.toLocaleString('id-ID')}
+                              </td>
+                              <td style={{ padding: '8px 14px', textAlign: 'left', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, fontSize: 12 }}>
+                                Total
+                              </td>
+                              <td style={{ padding: '8px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#01bcce', fontWeight: 900, fontSize: 13 }}>
+                                {totalCompInternalB.toLocaleString('id-ID')}
+                              </td>
+                              <td style={{ padding: '8px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#268484', fontWeight: 900, fontSize: 13 }}>
+                                {totalCompEksternalB.toLocaleString('id-ID')}
+                              </td>
+                              <td style={{ padding: '8px 14px', textAlign: 'center', color: '#00282b', fontWeight: 900, fontSize: 13, background: '#e6fffa' }}>
+                                {totalCompKeseluruhanB.toLocaleString('id-ID')}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Catatan di Bawah Tabel Perbandingan (Hanya jika ada catatan yang diisi) */}
+                  {(globalPerbandinganInternal?.trim() || globalPerbandinganEksternal?.trim()) && (
+                    <div className="w-full bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200 shadow-xs font-nav flex items-start gap-3 transition-all mt-1">
+                      <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                            style={{ background: 'rgba(208,219,65,0.2)', color: '#00282b' }}>
+                        <FileText size={15} />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        {globalPerbandinganInternal?.trim() && (
+                          <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                            {globalPerbandinganInternal}
+                          </p>
+                        )}
+                        {globalPerbandinganEksternal?.trim() && (
+                          <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                            {globalPerbandinganEksternal}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2225,7 +2449,7 @@ export default function AkuntansiVerifikasiClient({
               </div>
             </div>
 
-            {/* BOX: TABEL CAPAIAN & CHARTS */}
+            {/* ================= SECTION 1: SLA DOKUMEN INTERNAL ================= */}
             <div style={{
               background: 'linear-gradient(135deg, #00282b 0%, #015a61 100%)', borderRadius: 20, padding: '32px 32px',
               boxShadow: '0 12px 40px rgba(0,40,43,.25)', border: '1px solid rgba(1,188,206,0.3)',
@@ -2239,7 +2463,7 @@ export default function AkuntansiVerifikasiClient({
                 style={{ opacity: 0.15 }}
               />
 
-              {/* Watermark Ornamen Sisi Kiri (Diperbesar) */}
+              {/* Watermark Ornamen Sisi Kiri */}
               <img
                 src="/ornament-side.png"
                 alt=""
@@ -2248,12 +2472,12 @@ export default function AkuntansiVerifikasiClient({
               />
 
               <div className="relative z-10">
-                {/* Header Box: Judul "Capaian" di Tengah & Filter Tahun di Kanan */}
+                {/* Header: Judul di Tengah & Filter Tahun di Kanan */}
                 <div className="relative mb-6">
                   <div className="text-center">
                     <div style={{ width: 40, height: 3.5, background: '#d0db41', borderRadius: 2, margin: '0 auto 6px' }} />
-                    <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: 22, fontWeight: 900, color: '#d0db41', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, textShadow: '0 2px 10px rgba(208,219,65,0.25)' }}>
-                      {yearSlaData.judul_tabel || 'Capaian'}
+                    <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: 24, fontWeight: 900, color: '#d0db41', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, textShadow: '0 2px 10px rgba(208,219,65,0.25)' }}>
+                      {yearSlaData.judul_internal || defaultSlaJudulInternal}
                     </h2>
                   </div>
                   {/* Filter Tahun di Ujung Kanan */}
@@ -2274,126 +2498,260 @@ export default function AkuntansiVerifikasiClient({
                   </div>
                 </div>
 
-                {/* FILTER PRESET PERIODE (Semua Bulan, Kuartal 1-4, Semester 1-2, dan Multi-select) */}
+                {/* FILTER PRESET PERIODE */}
                 <PeriodePresetFilter
-                  selectedMonths={selectedMonthsSla}
-                  onChange={setSelectedMonthsSla}
+                  selectedMonths={selectedMonthsSlaInternal}
+                  onChange={setSelectedMonthsSlaInternal}
+                  onApplyToAll={applySlaInternalToAll}
                 />
 
-                {/* BARIS ATAS: DUA CHART SEJAJAR (Line Chart & Pie Chart) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch mb-6">
-                  {/* 1. Line Chart Tren Capaian SLA */}
-                  <div className="h-full flex flex-col justify-between">
-                    <SlaLineChart
-                      data={slaLineChartData}
-                      title="Tren Capaian SLA"
-                      periodeLabel={formatPeriodeLabel(selectedMonthsSla)}
-                    />
-                  </div>
+                {/* 1. LINE CHART DI BAGIAN ATAS (3 LINES) */}
+                <div className="w-full mb-6">
+                  <SlaSectionLineChart
+                    data={slaInternalChartData}
+                    title={`Tren ${yearSlaData.judul_internal || defaultSlaJudulInternal}`}
+                    periodeLabel={formatPeriodeLabel(selectedMonthsSlaInternal)}
+                  />
+                </div>
 
-                  {/* 2. Pie Chart Proporsi Capaian SLA */}
-                  <div className="h-full flex flex-col justify-between">
-                    <SlaPieChart
-                      rataInternal={slaAverages.internal}
-                      rataEksternal={slaAverages.eksternal}
-                      rataKeseluruhan={slaAverages.keseluruhan}
-                      title="Proporsi Capaian SLA"
-                      periodeLabel={formatPeriodeLabel(selectedMonthsSla)}
-                    />
+                {/* 2. TABEL DI BAGIAN TENGAH (Format Sesuai Gambar: Kategori, Jan..Des Tanpa Rata-rata) */}
+                <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white mb-6">
+                  <table className="w-full text-left font-nav text-xs sm:text-sm border-collapse">
+                    <thead style={{ background: '#008080' }}>
+                      <tr>
+                        <th style={{ padding: '12px 14px', textAlign: 'left', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase', minWidth: 160 }}>
+                          <div className="inline-flex items-center gap-1.5 text-white">
+                            <span>Kategori</span>
+                            <ExcelPeriodFilterHeader
+                              selectedMonths={selectedMonthsSlaInternal}
+                              onChange={setSelectedMonthsSlaInternal}
+                              onApplyToAll={applySlaInternalToAll}
+                              tableName={yearSlaData.judul_internal || defaultSlaJudulInternal}
+                            />
+                          </div>
+                        </th>
+                        {BULAN_TABEL_SLA.map((bln, idx) => (
+                          <th
+                            key={bln}
+                            style={{
+                              padding: '12px 8px',
+                              textAlign: 'center',
+                              borderRight: idx === BULAN_TABEL_SLA.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                              borderBottom: '2px solid rgba(0,0,0,0.1)',
+                              fontFamily: 'Nunito, sans-serif',
+                              fontSize: 11,
+                              fontWeight: 800,
+                              color: '#ffffff',
+                              textTransform: 'uppercase',
+                              minWidth: 48,
+                              opacity: selectedMonthsSlaInternal.includes(NAMA_BULAN[idx]) ? 1 : 0.65
+                            }}
+                          >
+                            {bln}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {[slaInternalRowVerifikasi, slaInternalRowPengambilan, slaInternalRowPengembalian].map((row, rIdx) => (
+                        <tr key={row.name} className="rowHover" style={{ background: rIdx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
+                          <td style={{ padding: '9px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
+                              <span className="font-extrabold text-[#00282b]">{row.name}</span>
+                            </div>
+                          </td>
+                          {row.values.map((val, mIdx) => {
+                            const isSelected = selectedMonthsSlaInternal.includes(NAMA_BULAN[mIdx])
+                            return (
+                              <td
+                                key={mIdx}
+                                style={{
+                                  padding: '9px 6px',
+                                  textAlign: 'center',
+                                  borderRight: mIdx === row.values.length - 1 ? 'none' : '1px solid #f0f0f0',
+                                  borderBottom: '1px solid #f0f0f0',
+                                  fontFamily: 'Nunito, sans-serif',
+                                  fontSize: 12,
+                                  fontWeight: isSelected && val > 0 ? 800 : 600,
+                                  color: !isSelected ? '#cbd5e1' : val > 0 ? '#00282b' : '#94a3b8',
+                                  background: isSelected && val > 0 ? 'transparent' : !isSelected ? '#f8fafc' : 'transparent',
+                                }}
+                              >
+                                {val > 0 ? `${val.toFixed(1)}%` : '-'}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 3. TEXT BOX UNTUK CATATAN DI BAGIAN BAWAH */}
+                <div className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs font-nav flex items-start gap-3.5 transition-all">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                       style={{ background: 'rgba(1,188,206,0.12)', color: '#01bcce' }}>
+                    <FileText size={16} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                      {yearSlaData.keterangan_internal || defaultSlaKetInternal}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ================= SECTION 2: SLA DOKUMEN EKSTERNAL ================= */}
+            <div style={{
+              background: 'linear-gradient(135deg, #00282b 0%, #015a61 100%)', borderRadius: 20, padding: '32px 32px',
+              boxShadow: '0 12px 40px rgba(0,40,43,.25)', border: '1px solid rgba(1,188,206,0.3)',
+              marginBottom: 32, position: 'relative', overflow: 'hidden'
+            }}>
+              {/* Watermark Ornamen Mandala (Kanan Atas) */}
+              <img
+                src="/ornament-mandala.png"
+                alt=""
+                className="absolute -top-12 -right-12 w-52 h-52 object-contain pointer-events-none select-none z-0"
+                style={{ opacity: 0.15 }}
+              />
+
+              {/* Watermark Ornamen Sisi Kiri */}
+              <img
+                src="/ornament-side.png"
+                alt=""
+                className="absolute -left-6 sm:-left-7 md:-left-8 top-0 bottom-0 h-full w-36 sm:w-44 md:w-52 object-cover object-left opacity-[0.08] pointer-events-none select-none z-0"
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+
+              <div className="relative z-10">
+                {/* Header: Judul di Tengah & Filter Tahun di Kanan */}
+                <div className="relative mb-6">
+                  <div className="text-center">
+                    <div style={{ width: 40, height: 3.5, background: '#d0db41', borderRadius: 2, margin: '0 auto 6px' }} />
+                    <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: 24, fontWeight: 900, color: '#d0db41', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, textShadow: '0 2px 10px rgba(208,219,65,0.25)' }}>
+                      {yearSlaData.judul_eksternal || defaultSlaJudulEksternal}
+                    </h2>
+                  </div>
+                  {/* Filter Tahun di Ujung Kanan */}
+                  <div className="sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2 mt-3 sm:mt-0 flex justify-center">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...sel, background: '#ffffff', borderColor: '#e2e8f0' }}>
+                      <Calendar size={15} style={{ color: '#268484' }} />
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Tahun:</span>
+                      <select
+                        value={selectedYearSla}
+                        onChange={e => setSelectedYearSla(parseInt(e.target.value))}
+                        style={{ background: 'transparent', border: 'none', outline: 'none', fontWeight: 800, color: '#00282b', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontSize: 13 }}
+                      >
+                        {availableSlaYears.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {/* BARIS BAWAH: TABEL CAPAIAN DI SEBELAH KIRI & TEXT BOX CATATAN DI SEBELAH KANAN */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-200">
-                  {/* Kolom Kiri: Tabel Capaian (6 Kolom) */}
-                  <div className="lg:col-span-6 flex flex-col gap-4">
-                    <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
-                      <table className="w-full text-left font-nav text-xs sm:text-sm border-collapse">
-                        <thead style={{ background: '#008080' }}>
-                          <tr>
-                            <th style={{ padding: '12px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              <div className="inline-flex items-center justify-center gap-1.5 text-white">
-                                <span>Periode</span>
-                                <ExcelPeriodFilterHeader
-                                  selectedMonths={selectedMonthsSla}
-                                  onChange={setSelectedMonthsSla}
-                                  tableName="Capaian SLA"
-                                />
-                              </div>
-                            </th>
-                            <th style={{ padding: '12px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              Internal
-                            </th>
-                            <th style={{ padding: '12px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              Eksternal
-                            </th>
-                            <th style={{ padding: '12px 14px', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              Keseluruhan
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {slaTableData.length === 0 ? (
-                            <tr>
-                              <td colSpan={4} className="py-8 text-center text-gray-400 font-bold text-xs">
-                                Belum ada data capaian SLA yang diinput untuk tahun ini.
-                              </td>
-                            </tr>
-                          ) : (
-                            slaTableData.map((row, idx) => (
-                              <tr key={row.bulan} className="rowHover" style={{ background: idx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
-                                <td style={{ padding: '4px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b', lineHeight: 1.25 }}>
-                                  {row.bulan}
-                                </td>
-                                <td style={{ padding: '4px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#01bcce', lineHeight: 1.25 }}>
-                                  {row.internal.toFixed(1)}%
-                                </td>
-                                <td style={{ padding: '4px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#268484', lineHeight: 1.25 }}>
-                                  {row.eksternal.toFixed(1)}%
-                                </td>
-                                <td style={{ padding: '4px 14px', textAlign: 'center', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, color: '#566000', lineHeight: 1.25 }}>
-                                  {row.keseluruhan.toFixed(1)}%
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                        {/* Row Rata-rata */}
-                        {slaTableData.length > 0 && (
-                          <tfoot style={{ background: '#f8fafc', borderTop: '2px solid #00282b', fontWeight: 800 }}>
-                            <tr>
-                              <td style={{ padding: '7px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, textTransform: 'uppercase', fontSize: 12 }}>
-                                Rata-rata
-                              </td>
-                              <td style={{ padding: '7px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#01bcce', fontWeight: 900, fontSize: 13 }}>
-                                {slaAverages.internal.toFixed(1)}%
-                              </td>
-                              <td style={{ padding: '7px 14px', textAlign: 'center', borderRight: '1px solid #eee', color: '#268484', fontWeight: 900, fontSize: 13 }}>
-                                {slaAverages.eksternal.toFixed(1)}%
-                              </td>
-                              <td style={{ padding: '7px 14px', textAlign: 'center', color: '#566000', fontWeight: 900, fontSize: 13 }}>
-                                {slaAverages.keseluruhan.toFixed(1)}%
-                              </td>
-                            </tr>
-                          </tfoot>
-                        )}
-                      </table>
-                    </div>
-                  </div>
+                {/* FILTER PRESET PERIODE */}
+                <PeriodePresetFilter
+                  selectedMonths={selectedMonthsSlaEksternal}
+                  onChange={setSelectedMonthsSlaEksternal}
+                  onApplyToAll={applySlaEksternalToAll}
+                />
 
-                  {/* Kolom Kanan: Text Box Catatan (6 Kolom) */}
-                  <div className="lg:col-span-6 h-full flex flex-col">
-                    <div className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs font-nav flex items-start gap-3.5 transition-all">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                           style={{ background: 'rgba(38,132,132,0.12)', color: '#268484' }}>
-                        <FileText size={16} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                          {yearSlaData.keterangan_capaian}
-                        </p>
-                      </div>
-                    </div>
+                {/* 1. LINE CHART DI BAGIAN ATAS (3 LINES) */}
+                <div className="w-full mb-6">
+                  <SlaSectionLineChart
+                    data={slaEksternalChartData}
+                    title={`Tren ${yearSlaData.judul_eksternal || defaultSlaJudulEksternal}`}
+                    periodeLabel={formatPeriodeLabel(selectedMonthsSlaEksternal)}
+                  />
+                </div>
+
+                {/* 2. TABEL DI BAGIAN TENGAH (Format Sesuai Gambar: Kategori, Jan..Des Tanpa Rata-rata) */}
+                <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white mb-6">
+                  <table className="w-full text-left font-nav text-xs sm:text-sm border-collapse">
+                    <thead style={{ background: '#008080' }}>
+                      <tr>
+                        <th style={{ padding: '12px 14px', textAlign: 'left', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase', minWidth: 160 }}>
+                          <div className="inline-flex items-center gap-1.5 text-white">
+                            <span>Kategori</span>
+                            <ExcelPeriodFilterHeader
+                              selectedMonths={selectedMonthsSlaEksternal}
+                              onChange={setSelectedMonthsSlaEksternal}
+                              onApplyToAll={applySlaEksternalToAll}
+                              tableName={yearSlaData.judul_eksternal || defaultSlaJudulEksternal}
+                            />
+                          </div>
+                        </th>
+                        {BULAN_TABEL_SLA.map((bln, idx) => (
+                          <th
+                            key={bln}
+                            style={{
+                              padding: '12px 8px',
+                              textAlign: 'center',
+                              borderRight: idx === BULAN_TABEL_SLA.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                              borderBottom: '2px solid rgba(0,0,0,0.1)',
+                              fontFamily: 'Nunito, sans-serif',
+                              fontSize: 11,
+                              fontWeight: 800,
+                              color: '#ffffff',
+                              textTransform: 'uppercase',
+                              minWidth: 48,
+                              opacity: selectedMonthsSlaEksternal.includes(NAMA_BULAN[idx]) ? 1 : 0.65
+                            }}
+                          >
+                            {bln}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {[slaEksternalRowVerifikasi, slaEksternalRowPengambilan, slaEksternalRowPengembalian].map((row, rIdx) => (
+                        <tr key={row.name} className="rowHover" style={{ background: rIdx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
+                          <td style={{ padding: '9px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
+                              <span className="font-extrabold text-[#00282b]">{row.name}</span>
+                            </div>
+                          </td>
+                          {row.values.map((val, mIdx) => {
+                            const isSelected = selectedMonthsSlaEksternal.includes(NAMA_BULAN[mIdx])
+                            return (
+                              <td
+                                key={mIdx}
+                                style={{
+                                  padding: '9px 6px',
+                                  textAlign: 'center',
+                                  borderRight: mIdx === row.values.length - 1 ? 'none' : '1px solid #f0f0f0',
+                                  borderBottom: '1px solid #f0f0f0',
+                                  fontFamily: 'Nunito, sans-serif',
+                                  fontSize: 12,
+                                  fontWeight: isSelected && val > 0 ? 800 : 600,
+                                  color: !isSelected ? '#cbd5e1' : val > 0 ? '#00282b' : '#94a3b8',
+                                  background: isSelected && val > 0 ? 'transparent' : !isSelected ? '#f8fafc' : 'transparent',
+                                }}
+                              >
+                                {val > 0 ? `${val.toFixed(1)}%` : '-'}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 3. TEXT BOX UNTUK CATATAN DI BAGIAN BAWAH */}
+                <div className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs font-nav flex items-start gap-3.5 transition-all">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                       style={{ background: 'rgba(38,132,132,0.12)', color: '#268484' }}>
+                    <FileText size={16} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                      {yearSlaData.keterangan_eksternal || defaultSlaKetEksternal}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -2432,7 +2790,7 @@ export default function AkuntansiVerifikasiClient({
               </div>
             </div>
 
-            {/* MAIN BOX: DUA CHART DI ATAS, TABEL & CATATAN DI BAWAH */}
+            {/* ================= BOX 1: JENIS TAGIHAN ================= */}
             <div style={{
               background: 'linear-gradient(135deg, #00282b 0%, #015a61 100%)', borderRadius: 20, padding: '32px 32px',
               boxShadow: '0 12px 40px rgba(0,40,43,.25)', border: '1px solid rgba(1,188,206,0.3)',
@@ -2455,12 +2813,162 @@ export default function AkuntansiVerifikasiClient({
               />
 
               <div className="relative z-10">
-                {/* Header Box: Judul di Tengah & Filter Tahun di Kanan */}
+                {/* Header Box 1: Judul di Tengah & Filter Tahun di Kanan */}
                 <div className="relative mb-6">
                   <div className="text-center">
                     <div style={{ width: 40, height: 3.5, background: '#d0db41', borderRadius: 2, margin: '0 auto 6px' }} />
-                    <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: 22, fontWeight: 900, color: '#d0db41', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, textShadow: '0 2px 10px rgba(208,219,65,0.25)' }}>
-                      {yearBaData.judul_tabel || 'BA Tutup Tagihan'}
+                    <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: 24, fontWeight: 900, color: '#d0db41', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, textShadow: '0 2px 10px rgba(208,219,65,0.25)' }}>
+                      {yearBaData.judul_jenis_tagihan || 'Jenis Tagihan'}
+                    </h2>
+                  </div>
+                  {/* Filter Tahun di Ujung Kanan */}
+                  <div className="sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2 mt-3 sm:mt-0 flex justify-center">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...sel, background: '#ffffff', borderColor: '#e2e8f0' }}>
+                      <Calendar size={15} style={{ color: '#268484' }} />
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Tahun:</span>
+                      <select
+                        value={selectedYearBa}
+                        onChange={e => setSelectedYearBa(parseInt(e.target.value))}
+                        style={{ background: 'transparent', border: 'none', outline: 'none', fontWeight: 800, color: '#00282b', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontSize: 13 }}
+                      >
+                        {availableBaYears.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CONTENT BOX 1: TABEL JENIS TAGIHAN DI KIRI & COLUMN CHART DI KANAN */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                  {/* Kolom Kiri: Tabel Jenis Tagihan (6 Kolom) */}
+                  <div className="lg:col-span-6 flex flex-col justify-between gap-4">
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
+                      <table className="w-full text-left font-nav text-xs sm:text-sm border-collapse">
+                        <thead style={{ background: '#008080' }}>
+                          <tr>
+                            <th style={{ padding: '12px 14px', textAlign: 'center', width: 50, borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              No
+                            </th>
+                            <th style={{ padding: '12px 16px', textAlign: 'left', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Jenis Tagihan
+                            </th>
+                            <th style={{ padding: '12px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Jumlah Penyedia
+                            </th>
+                            <th style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                              Sudah Terbit BA
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {jenisTagihanItems.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="py-8 text-center text-gray-400 font-bold text-xs">
+                                Belum ada data jenis tagihan yang diinput untuk tahun ini.
+                              </td>
+                            </tr>
+                          ) : (
+                            jenisTagihanItems.map((item, idx) => {
+                              const bulletColor = JENIS_TAGIHAN_PALETTE[idx % JENIS_TAGIHAN_PALETTE.length]
+                              const penyediaVal = item.jumlah_penyedia ?? item.jumlah ?? 0
+                              const terbitVal = item.sudah_terbit_ba ?? 0
+                              return (
+                                <tr key={item.id || idx} className="rowHover" style={{ background: idx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
+                                  <td style={{ padding: '8px 14px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, color: '#64748b' }}>
+                                    {idx + 1}
+                                  </td>
+                                  <td style={{ padding: '8px 16px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12.5, fontWeight: 700, color: '#00282b', lineHeight: 1.3 }}>
+                                    <div className="flex items-center gap-2.5">
+                                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: bulletColor }} />
+                                      <span>{item.jenis}</span>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '8px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#268484', lineHeight: 1.3 }}>
+                                    {penyediaVal.toLocaleString('id-ID')}
+                                  </td>
+                                  <td style={{ padding: '8px 16px', textAlign: 'center', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#566000', lineHeight: 1.3 }}>
+                                    {terbitVal.toLocaleString('id-ID')}
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                        {/* Tfoot: Total Jumlah */}
+                        {jenisTagihanItems.length > 0 && (
+                          <tfoot style={{ background: '#f8fafc', borderTop: '2px solid #00282b', fontWeight: 800 }}>
+                            <tr>
+                              <td colSpan={2} style={{ padding: '10px 16px', textAlign: 'left', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, textTransform: 'uppercase', fontSize: 12 }}>
+                                Total Tagihan
+                              </td>
+                              <td style={{ padding: '10px 16px', textAlign: 'center', borderRight: '1px solid #eee', color: '#268484', fontWeight: 900, fontSize: 13.5 }}>
+                                {totalJenisTagihanPenyedia.toLocaleString('id-ID')}
+                              </td>
+                              <td style={{ padding: '10px 16px', textAlign: 'center', color: '#566000', fontWeight: 900, fontSize: 13.5 }}>
+                                {totalJenisTagihanTerbitBa.toLocaleString('id-ID')}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+
+                    {/* Text Box Catatan Keterangan Jenis Tagihan */}
+                    <div className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs font-nav flex items-start gap-3.5 transition-all">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                           style={{ background: 'rgba(38,132,132,0.12)', color: '#268484' }}>
+                        <FileText size={16} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                          {yearBaData.keterangan_jenis_tagihan || defaultKetJenisTagihan}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Kolom Kanan: Column Chart Bersebelahan Jumlah Penyedia & Sudah Terbit BA (6 Kolom) */}
+                  <div className="lg:col-span-6 h-full flex flex-col justify-between">
+                    <BaJenisTagihanColumnChart
+                      items={jenisTagihanItems}
+                      title={`Perbandingan ${yearBaData.judul_jenis_tagihan || 'Jenis Tagihan'}`}
+                      periodeLabel={`Tahun ${selectedYearBa}`}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ================= BOX 2: BA TUTUP TAGIHAN BERDASARKAN PROSES ================= */}
+            <div style={{
+              background: 'linear-gradient(135deg, #00282b 0%, #015a61 100%)', borderRadius: 20, padding: '32px 32px',
+              boxShadow: '0 12px 40px rgba(0,40,43,.25)', border: '1px solid rgba(1,188,206,0.3)',
+              marginBottom: 32, position: 'relative', overflow: 'hidden'
+            }}>
+              {/* Watermark Ornamen Mandala (Kanan Atas) */}
+              <img
+                src="/ornament-mandala.png"
+                alt=""
+                className="absolute -top-12 -right-12 w-52 h-52 object-contain pointer-events-none select-none z-0"
+                style={{ opacity: 0.15 }}
+              />
+
+              {/* Watermark Ornamen Sisi Kiri (Diperbesar) */}
+              <img
+                src="/ornament-side.png"
+                alt=""
+                className="absolute -left-6 sm:-left-7 md:-left-8 top-0 bottom-0 h-full w-36 sm:w-44 md:w-52 object-cover object-left opacity-[0.08] pointer-events-none select-none z-0"
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+
+              <div className="relative z-10">
+                {/* Header Box 2: Judul di Tengah & Filter Tahun di Kanan */}
+                <div className="relative mb-6">
+                  <div className="text-center">
+                    <div style={{ width: 40, height: 3.5, background: '#d0db41', borderRadius: 2, margin: '0 auto 6px' }} />
+                    <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: 24, fontWeight: 900, color: '#d0db41', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, textShadow: '0 2px 10px rgba(208,219,65,0.25)' }}>
+                      {yearBaData.judul_tabel || 'BA Tutup Tagihan Berdasarkan Proses'}
                     </h2>
                   </div>
                   {/* Filter Tahun di Ujung Kanan */}
@@ -2484,126 +2992,275 @@ export default function AkuntansiVerifikasiClient({
                   </div>
                 </div>
 
-                {/* BARIS ATAS: DUA CHART SEJAJAR (Line Chart & Pie Chart) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch mb-6">
-                  {/* 1. Line Chart Tren BA Tutup Tagihan */}
-                  <div className="h-full flex flex-col justify-between">
-                    <BaTutupTagihanLineChart
-                      data={baLineChartData}
-                      title="Tren BA Tutup Tagihan"
-                      periodeLabel={formatPeriodeLabel(selectedMonthsBa)}
-                    />
+                {/* LINE CHART TREN CAPAIAN PERSENTASE (Target 100% Total Penyedia) */}
+                <div className="w-full mb-6">
+                  <BaProgressLineChart
+                    data={baProgressLineChartData}
+                    title={`Tren Capaian ${yearBaData.judul_tabel || 'BA Tutup Tagihan Berdasarkan Proses'}`}
+                    periodeLabel={formatPeriodeLabel(selectedMonthsBa)}
+                    totalLabel="Total Penyedia"
+                    terbitLabel="Sudah Terbit BA"
+                    colorTotal="#268484"
+                    colorTerbit="#d0db41"
+                  />
+                </div>
+
+                {/* BARIS BAWAH: TABEL LEBAR (FULL WIDTH) & CATATAN DI BAWAH TABEL */}
+                <div className="space-y-4 pt-4 border-t border-gray-200">
+                  {/* 1. Tabel BA Tutup Tagihan (Diperbesar & Full Width) */}
+                  <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
+                    <table className="w-full text-left font-nav text-sm border-collapse">
+                      <thead style={{ background: '#008080' }}>
+                        <tr>
+                          <th style={{ padding: '14px 18px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            <div className="inline-flex items-center justify-center gap-1.5 text-white">
+                              <span>Periode</span>
+                              <ExcelPeriodFilterHeader
+                                selectedMonths={selectedMonthsBa}
+                                onChange={setSelectedMonthsBa}
+                                tableName={yearBaData.judul_tabel || 'BA Tutup Tagihan Berdasarkan Proses'}
+                              />
+                            </div>
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Total Penyedia
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Belum Dikonfirmasi
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Proses Penagihan
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Proses Pembuatan BA
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Sudah Terbit BA
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {baTableData.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-10 text-center text-gray-400 font-bold text-sm">
+                              Belum ada data {(yearBaData.judul_tabel || 'BA Tutup Tagihan Berdasarkan Proses').toLowerCase()} yang diinput untuk tahun ini.
+                            </td>
+                          </tr>
+                        ) : (
+                          baTableData.map((row, idx) => {
+                            const isHighlighted = activeBaRow?.bulan === row.bulan
+                            const rowBg = isHighlighted ? '#cbf0f3' : (idx % 2 === 0 ? '#ffffff' : '#fafbfc')
+                            return (
+                              <tr
+                                key={row.bulan}
+                                onClick={() => setSelectedBaMonthRow(row.bulan)}
+                                className={`transition-colors cursor-pointer select-none ${
+                                  isHighlighted ? '' : 'hover:bg-[#f0faf9]'
+                                }`}
+                                style={{ background: rowBg }}
+                                title={`Baris periode ${row.bulan}`}
+                              >
+                                <td style={{ padding: '11px 18px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: isHighlighted ? '#004d53' : '#00282b', backgroundColor: rowBg }}>
+                                  {row.bulan}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: '#00282b', backgroundColor: rowBg }}>
+                                  {row.total_penyedia.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: '#f43f5e', backgroundColor: rowBg }}>
+                                  {row.belum_dikonfirmasi.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: '#268484', backgroundColor: rowBg }}>
+                                  {row.proses_penagihan.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: '#01bcce', backgroundColor: rowBg }}>
+                                  {row.proses_pembuatan_ba.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 800, color: '#566000', backgroundColor: rowBg }}>
+                                  {row.sudah_terbit_ba.toLocaleString('id-ID')}
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
 
-                  {/* 2. Pie Chart Proporsi Status BA Tutup Tagihan */}
-                  <div className="h-full flex flex-col justify-between">
-                    <BaTutupTagihanPieChart
-                      totalPenyedia={activeBaRow?.total_penyedia || 0}
-                      belumDikonfirmasi={activeBaRow?.belum_dikonfirmasi || 0}
-                      prosesPenagihan={activeBaRow?.proses_penagihan || 0}
-                      prosesPembuatanBa={activeBaRow?.proses_pembuatan_ba || 0}
-                      sudahTerbitBa={activeBaRow?.sudah_terbit_ba || 0}
-                      title="Proporsi Status BA Tutup Tagihan"
-                      periodeLabel={activeBaRow ? `Periode ${activeBaRow.bulan} ${selectedYearBa}` : 'Belum Ada Data'}
-                    />
+                  {/* 2. Text Box Catatan di Bawah Tabel */}
+                  <div className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs font-nav flex items-start gap-3.5 transition-all">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                         style={{ background: 'rgba(38,132,132,0.12)', color: '#268484' }}>
+                      <FileText size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-[#268484] block mb-1">Catatan:</span>
+                      <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                        {yearBaData.keterangan || defaultBaKet}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ================= BOX 3: BA TUTUP TAGIHAN BERDASARKAN NOMINAL (RP) ================= */}
+            <div style={{
+              background: 'linear-gradient(135deg, #00282b 0%, #015a61 100%)', borderRadius: 20, padding: '32px 32px',
+              boxShadow: '0 12px 40px rgba(0,40,43,.25)', border: '1px solid rgba(1,188,206,0.3)',
+              marginBottom: 32, position: 'relative', overflow: 'hidden'
+            }}>
+              {/* Watermark Ornamen Mandala (Kanan Atas) */}
+              <img
+                src="/ornament-mandala.png"
+                alt=""
+                className="absolute -top-12 -right-12 w-52 h-52 object-contain pointer-events-none select-none z-0"
+                style={{ opacity: 0.15 }}
+              />
+
+              {/* Watermark Ornamen Sisi Kiri (Diperbesar) */}
+              <img
+                src="/ornament-side.png"
+                alt=""
+                className="absolute -left-6 sm:-left-7 md:-left-8 top-0 bottom-0 h-full w-36 sm:w-44 md:w-52 object-cover object-left opacity-[0.08] pointer-events-none select-none z-0"
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+
+              <div className="relative z-10">
+                {/* Header Box 3: Judul di Tengah & Filter Tahun di Kanan */}
+                <div className="relative mb-6">
+                  <div className="text-center">
+                    <div style={{ width: 40, height: 3.5, background: '#d0db41', borderRadius: 2, margin: '0 auto 6px' }} />
+                    <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: 24, fontWeight: 900, color: '#d0db41', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.2, textShadow: '0 2px 10px rgba(208,219,65,0.25)' }}>
+                      {yearBaData.judul_nominal || 'BA Tutup Tagihan Berdasarkan Nominal (Rp)'}
+                    </h2>
+                  </div>
+                  {/* Filter Tahun di Ujung Kanan */}
+                  <div className="sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2 mt-3 sm:mt-0 flex justify-center">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...sel, background: '#ffffff', borderColor: '#e2e8f0' }}>
+                      <Calendar size={15} style={{ color: '#268484' }} />
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Tahun:</span>
+                      <select
+                        value={selectedYearBa}
+                        onChange={e => {
+                          setSelectedYearBa(parseInt(e.target.value))
+                          setSelectedNominalMonthRow(null)
+                        }}
+                        style={{ background: 'transparent', border: 'none', outline: 'none', fontWeight: 800, color: '#00282b', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontSize: 13 }}
+                      >
+                        {availableBaYears.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {/* BARIS BAWAH: TABEL DI SEBELAH KIRI & TEXT BOX CATATAN DI SEBELAH KANAN */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-200">
-                  {/* Kolom Kiri: Tabel BA Tutup Tagihan (7 Kolom) */}
-                  <div className="lg:col-span-7 flex flex-col gap-4">
-                    <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
-                      <table className="w-full text-left font-nav text-xs sm:text-sm border-collapse">
-                        <thead style={{ background: '#008080' }}>
+                {/* LINE CHART TREN CAPAIAN PERSENTASE NOMINAL (Target 100% Total Nilai) */}
+                <div className="w-full mb-6">
+                  <BaProgressLineChart
+                    data={nominalProgressLineChartData}
+                    title={`Tren Capaian ${yearBaData.judul_nominal || 'BA Tutup Tagihan Berdasarkan Nominal (Rp)'}`}
+                    periodeLabel={formatPeriodeLabel(selectedMonthsNominal)}
+                    totalLabel="Total Nilai"
+                    terbitLabel="Sudah Terbit BA"
+                    isCurrency={true}
+                    colorTotal="#268484"
+                    colorTerbit="#01bcce"
+                  />
+                </div>
+
+                {/* BARIS BAWAH: TABEL LEBAR (FULL WIDTH) & CATATAN DI BAWAH TABEL */}
+                <div className="space-y-4 pt-4 border-t border-gray-200">
+                  {/* 1. Tabel Nominal BA Tutup Tagihan (Diperbesar & Full Width, dengan judul kolom 'Total Nilai') */}
+                  <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
+                    <table className="w-full text-left font-nav text-sm border-collapse">
+                      <thead style={{ background: '#008080' }}>
+                        <tr>
+                          <th style={{ padding: '14px 18px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            <div className="inline-flex items-center justify-center gap-1.5 text-white">
+                              <span>Periode</span>
+                              <ExcelPeriodFilterHeader
+                                selectedMonths={selectedMonthsNominal}
+                                onChange={setSelectedMonthsNominal}
+                                tableName={yearBaData.judul_nominal || 'BA Tutup Tagihan Berdasarkan Nominal (Rp)'}
+                              />
+                            </div>
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Total Nilai
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Belum Dikonfirmasi
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Proses Penagihan
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Proses Pembuatan BA
+                          </th>
+                          <th style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                            Sudah Terbit BA
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {nominalTableData.length === 0 ? (
                           <tr>
-                            <th style={{ padding: '12px 14px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              <div className="inline-flex items-center justify-center gap-1.5 text-white">
-                                <span>Periode</span>
-                                <ExcelPeriodFilterHeader
-                                  selectedMonths={selectedMonthsBa}
-                                  onChange={setSelectedMonthsBa}
-                                  tableName="BA Tutup Tagihan"
-                                />
-                              </div>
-                            </th>
-                            <th style={{ padding: '12px 12px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              Total Penyedia
-                            </th>
-                            <th style={{ padding: '12px 12px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              Belum Dikonfirmasi
-                            </th>
-                            <th style={{ padding: '12px 12px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              Proses Penagihan
-                            </th>
-                            <th style={{ padding: '12px 12px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              Proses Pembuatan BA
-                            </th>
-                            <th style={{ padding: '12px 12px', textAlign: 'center', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                              Sudah Terbit BA
-                            </th>
+                            <td colSpan={6} className="py-10 text-center text-gray-400 font-bold text-sm">
+                              Belum ada data {(yearBaData.judul_nominal || 'BA Tutup Tagihan Berdasarkan Nominal (Rp)').toLowerCase()} yang diinput untuk tahun ini.
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {baTableData.length === 0 ? (
-                            <tr>
-                              <td colSpan={6} className="py-8 text-center text-gray-400 font-bold text-xs">
-                                Belum ada data BA Tutup Tagihan yang diinput untuk tahun ini.
-                              </td>
-                            </tr>
-                          ) : (
-                            baTableData.map((row, idx) => {
-                              const isHighlighted = activeBaRow?.bulan === row.bulan
-                              const rowBg = isHighlighted ? '#cbf0f3' : (idx % 2 === 0 ? '#ffffff' : '#fafbfc')
-                              return (
-                                <tr
-                                  key={row.bulan}
-                                  onClick={() => setSelectedBaMonthRow(row.bulan)}
-                                  className={`transition-colors cursor-pointer select-none ${
-                                    isHighlighted ? '' : 'hover:bg-[#f0faf9]'
-                                  }`}
-                                  style={{ background: rowBg }}
-                                  title={`Klik untuk menampilkan data ${row.bulan} di pie chart`}
-                                >
-                                  <td style={{ padding: '7px 12px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: isHighlighted ? 900 : 700, color: isHighlighted ? '#004d53' : '#00282b', backgroundColor: rowBg, lineHeight: 1.25 }}>
-                                    {row.bulan}
-                                  </td>
-                                  <td style={{ padding: '7px 12px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: isHighlighted ? 900 : 700, color: '#00282b', backgroundColor: rowBg, lineHeight: 1.25 }}>
-                                    {row.total_penyedia.toLocaleString('id-ID')}
-                                  </td>
-                                  <td style={{ padding: '7px 12px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: isHighlighted ? 900 : 700, color: '#f43f5e', backgroundColor: rowBg, lineHeight: 1.25 }}>
-                                    {row.belum_dikonfirmasi.toLocaleString('id-ID')}
-                                  </td>
-                                  <td style={{ padding: '7px 12px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: isHighlighted ? 900 : 700, color: '#268484', backgroundColor: rowBg, lineHeight: 1.25 }}>
-                                    {row.proses_penagihan.toLocaleString('id-ID')}
-                                  </td>
-                                  <td style={{ padding: '7px 12px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: isHighlighted ? 900 : 700, color: '#01bcce', backgroundColor: rowBg, lineHeight: 1.25 }}>
-                                    {row.proses_pembuatan_ba.toLocaleString('id-ID')}
-                                  </td>
-                                  <td style={{ padding: '7px 12px', textAlign: 'center', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: isHighlighted ? 900 : 800, color: '#566000', backgroundColor: rowBg, lineHeight: 1.25 }}>
-                                    {row.sudah_terbit_ba.toLocaleString('id-ID')}
-                                  </td>
-                                </tr>
-                              )
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                        ) : (
+                          nominalTableData.map((row, idx) => {
+                            const isHighlighted = activeNominalRow?.bulan === row.bulan
+                            const rowBg = isHighlighted ? '#cbf0f3' : (idx % 2 === 0 ? '#ffffff' : '#fafbfc')
+                            return (
+                              <tr
+                                key={row.bulan}
+                                onClick={() => setSelectedNominalMonthRow(row.bulan)}
+                                className={`transition-colors cursor-pointer select-none ${
+                                  isHighlighted ? '' : 'hover:bg-[#f0faf9]'
+                                }`}
+                                style={{ background: rowBg }}
+                                title={`Baris periode ${row.bulan}`}
+                              >
+                                <td style={{ padding: '11px 18px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: isHighlighted ? '#004d53' : '#00282b', backgroundColor: rowBg }}>
+                                  {row.bulan}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: '#00282b', backgroundColor: rowBg }}>
+                                  {row.total_penyedia.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: '#f43f5e', backgroundColor: rowBg }}>
+                                  {row.belum_dikonfirmasi.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: '#268484', backgroundColor: rowBg }}>
+                                  {row.proses_penagihan.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 700, color: '#01bcce', backgroundColor: rowBg }}>
+                                  {row.proses_pembuatan_ba.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '11px 16px', textAlign: 'center', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 13.5, fontWeight: isHighlighted ? 900 : 800, color: '#566000', backgroundColor: rowBg }}>
+                                  {row.sudah_terbit_ba.toLocaleString('id-ID')}
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
 
-                  {/* Kolom Kanan: Text Box Catatan (5 Kolom) */}
-                  <div className="lg:col-span-5 h-full flex flex-col">
-                    <div className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs font-nav flex items-start gap-3.5 transition-all">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                           style={{ background: 'rgba(38,132,132,0.12)', color: '#268484' }}>
-                        <FileText size={16} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                          {yearBaData.keterangan}
-                        </p>
-                      </div>
+                  {/* 2. Text Box Catatan di Bawah Tabel */}
+                  <div className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs font-nav flex items-start gap-3.5 transition-all">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                         style={{ background: 'rgba(38,132,132,0.12)', color: '#268484' }}>
+                      <FileText size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-[#268484] block mb-1">Catatan:</span>
+                      <p className="font-nav text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                        {yearBaData.keterangan_nominal || defaultKetNominal}
+                      </p>
                     </div>
                   </div>
                 </div>

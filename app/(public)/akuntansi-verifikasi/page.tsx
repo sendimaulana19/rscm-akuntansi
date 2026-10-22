@@ -65,15 +65,27 @@ export default async function AkuntansiVerifikasiPage() {
     header_text: r.data?.header_text,
     judul_tabel: r.data?.judul_tabel,
     keterangan_capaian: r.data?.keterangan_capaian,
-    months: r.data?.months || []
+    months: r.data?.months || [],
+    judul_pengambilan: r.data?.judul_pengambilan,
+    keterangan_pengambilan: r.data?.keterangan_pengambilan,
+    months_pengambilan: r.data?.months_pengambilan || [],
+    judul_pengembalian: r.data?.judul_pengembalian,
+    keterangan_pengembalian: r.data?.keterangan_pengembalian,
+    months_pengembalian: r.data?.months_pengembalian || []
   }))
 
   const initialBaDataList: YearBaTutupTagihanData[] = (baRecords || []).map((r: any) => ({
     tahun: r.year,
     header_text: r.data?.header_text,
+    judul_jenis_tagihan: r.data?.judul_jenis_tagihan,
+    jenis_tagihan_items: r.data?.jenis_tagihan_items || [],
+    keterangan_jenis_tagihan: r.data?.keterangan_jenis_tagihan,
     judul_tabel: r.data?.judul_tabel,
     keterangan: r.data?.keterangan,
-    months: r.data?.months || []
+    months: r.data?.months || [],
+    judul_nominal: r.data?.judul_nominal,
+    keterangan_nominal: r.data?.keterangan_nominal,
+    months_nominal: r.data?.months_nominal || []
   }))
 
   const globalPerbandinganInternal = (globalComp?.data?.keterangan_perbandingan_internal || '').trim()

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Save, Calendar, Trash2, Edit3, Plus, CheckCircle2, FileText, ArrowRight, RotateCcw, AlertTriangle, ArrowRightLeft, Clock, FileCheck } from 'lucide-react'
+import { Save, Calendar, Trash2, Edit3, Plus, CheckCircle2, FileText, ArrowRight, RotateCcw, AlertTriangle, ArrowRightLeft, Clock, FileCheck, TrendingUp, FileDown, FileUp, BarChart3, Check, X } from 'lucide-react'
 
 const NAMA_BULAN = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -152,12 +152,42 @@ export default function AdminAkuntansiVerifikasi() {
   const [slaHeaderText, setSlaHeaderText] = useState(
     'Service Level Agreement (SLA) Verifikasi Dokumen Tagihan mengukur ketepatan waktu dan efektivitas proses verifikasi tagihan internal maupun eksternal sesuai standar layanan operasional RSCM.'
   )
-  const [slaJudulTabel, setSlaJudulTabel] = useState('Capaian')
+  // Kategori SLA Aktif di Admin: 'capaian' (SLA Verifikasi) | 'pengambilan' (SLA Pengambilan) | 'pengembalian' (SLA Pengembalian)
+  const [slaCategory, setSlaCategory] = useState<'capaian' | 'pengambilan' | 'pengembalian'>('capaian')
+
+  // Section 1: SLA Dokumen Internal
+  const [slaJudulInternal, setSlaJudulInternal] = useState('SLA Dokumen Internal')
+  const [slaKetInternal, setSlaKetInternal] = useState(
+    'Pencapaian Service Level Agreement (SLA) untuk dokumen tagihan internal mencakup kepatuhan terhadap standar waktu proses verifikasi, waktu pengambilan dokumen oleh unit kerja, dan waktu pengembalian berkas administrasi di lingkungan RSCM.'
+  )
+
+  // Section 2: SLA Dokumen Eksternal
+  const [slaJudulEksternal, setSlaJudulEksternal] = useState('SLA Dokumen Eksternal')
+  const [slaKetEksternal, setSlaKetEksternal] = useState(
+    'Pencapaian Service Level Agreement (SLA) untuk dokumen tagihan eksternal mencakup kepatuhan terhadap standar waktu proses verifikasi tagihan rekanan/vendor, waktu pengambilan dokumen, serta penyelesaian pengembalian dokumen administrasi penyedia pihak ketiga.'
+  )
+
+  // Kategori 1: SLA Verifikasi (DB key: months)
+  const [slaJudulTabel, setSlaJudulTabel] = useState('SLA Verifikasi')
   const [slaKetCapaian, setSlaKetCapaian] = useState(
     'Capaian persentase SLA verifikasi dokumen tagihan mencerminkan kepatuhan terhadap standar waktu layanan verifikasi. Tingkat capaian yang konsisten mendukung kelancaran arus kas dan kepuasan mitra kerja sama.'
   )
-
   const [slaMonthsData, setSlaMonthsData] = useState<MonthSlaEntry[]>(createEmptySlaMonths())
+
+  // Kategori 2: SLA Pengambilan (DB key: months_pengambilan)
+  const [slaJudulPengambilan, setSlaJudulPengambilan] = useState('SLA Pengambilan')
+  const [slaKetPengambilan, setSlaKetPengambilan] = useState(
+    'Capaian persentase SLA pengambilan dokumen tagihan mengukur efektivitas waktu pengambilan berkas tagihan oleh unit pengusul atau vendor sesuai ketentuan operasional RSCM.'
+  )
+  const [slaMonthsPengambilan, setSlaMonthsPengambilan] = useState<MonthSlaEntry[]>(createEmptySlaMonths())
+
+  // Kategori 3: SLA Pengembalian (DB key: months_pengembalian)
+  const [slaJudulPengembalian, setSlaJudulPengembalian] = useState('SLA Pengembalian')
+  const [slaKetPengembalian, setSlaKetPengembalian] = useState(
+    'Capaian persentase SLA pengembalian dokumen tagihan mengukur ketepatan waktu pengembalian berkas tagihan yang belum lengkap atau memerlukan perbaikan ke unit terkait.'
+  )
+  const [slaMonthsPengembalian, setSlaMonthsPengembalian] = useState<MonthSlaEntry[]>(createEmptySlaMonths())
+
   const [slaEditBulan, setSlaEditBulan] = useState<string>('Januari')
 
   const [slaIntPct, setSlaIntPct] = useState<string>('0')
@@ -174,20 +204,43 @@ export default function AdminAkuntansiVerifikasi() {
   const [baHeaderText, setBaHeaderText] = useState(
     'Layanan Berita Acara (BA) Tutup Tagihan memastikan seluruh proses penagihan dari penyedia/vendor telah terverifikasi, terkonfirmasi, dan diterbitkan dokumen BA resmi untuk penyelesaian administrasi keuangan.'
   )
-  const [baJudulTabel, setBaJudulTabel] = useState('BA Tutup Tagihan')
+
+  // Section 1: Jenis Tagihan
+  const [baJudulJenisTagihan, setBaJudulJenisTagihan] = useState('Jenis Tagihan')
+  const [baKetJenisTagihan, setBaKetJenisTagihan] = useState(
+    'Rekapitulasi proporsi tagihan yang masuk ke RSCM berdasarkan klasifikasi dan kelompok kebutuhan belanja operasional, perbekalan farmasi, serta layanan medis.'
+  )
+  const [baJenisTagihanItems, setBaJenisTagihanItems] = useState<{ id: string; jenis: string; jumlah?: number; jumlah_penyedia?: number; sudah_terbit_ba?: number }[]>([])
+  const [newJenisNama, setNewJenisNama] = useState('')
+  const [newJenisJumlahPenyedia, setNewJenisJumlahPenyedia] = useState('')
+  const [newJenisSudahTerbitBa, setNewJenisSudahTerbitBa] = useState('')
+  const [editingJenisId, setEditingJenisId] = useState<string | null>(null)
+
+  // Section 2: BA Tutup Tagihan (Status Penyedia)
+  const [baJudulTabel, setBaJudulTabel] = useState('BA Tutup Tagihan Berdasarkan Proses')
   const [baKet, setBaKet] = useState(
     'Monitoring penyelesaian Berita Acara (BA) Tutup Tagihan bagi penyedia/vendor barang dan jasa di lingkungan RSUPN Dr. Cipto Mangunkusumo.'
   )
-
   const [baMonthsData, setBaMonthsData] = useState<MonthBaEntry[]>(createEmptyBaMonths())
-  const [baEditBulan, setBaEditBulan] = useState<string>('Januari')
 
+  // Section 3: Nominal BA Tutup Tagihan (Status Transaksi)
+  const [baJudulNominal, setBaJudulNominal] = useState('BA Tutup Tagihan Berdasarkan Nominal (Rp)')
+  const [baKetNominal, setBaKetNominal] = useState(
+    'Monitoring nominal penyelesaian Berita Acara (BA) Tutup Tagihan berdasarkan total nilai penagihan dari penyedia/vendor barang dan jasa di lingkungan RSUPN Dr. Cipto Mangunkusumo.'
+  )
+  const [baMonthsNominal, setBaMonthsNominal] = useState<MonthBaEntry[]>(createEmptyBaMonths())
+
+  // Switcher Kategori 12 Bulan: 'penyedia' | 'nominal'
+  const [baCategory, setBaCategory] = useState<'penyedia' | 'nominal'>('penyedia')
+
+  const [baEditBulan, setBaEditBulan] = useState<string>('Januari')
   const [baTotalPenyedia, setBaTotalPenyedia] = useState<string>('0')
   const [baBelumKonfirmasi, setBaBelumKonfirmasi] = useState<string>('0')
   const [baProsesPenagihan, setBaProsesPenagihan] = useState<string>('0')
   const [baProsesPembuatanBa, setBaProsesPembuatanBa] = useState<string>('0')
   const [baSudahTerbitBa, setBaSudahTerbitBa] = useState<string>('0')
   const [baAutoCalcTotal, setBaAutoCalcTotal] = useState<boolean>(true)
+
 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -336,6 +389,13 @@ export default function AdminAkuntansiVerifikasi() {
     fetchAvailableSlaYears()
   }, [fetchAvailableSlaYears])
 
+  // Helper title for active SLA category
+  const getActiveSlaTitle = useCallback((cat: 'capaian' | 'pengambilan' | 'pengembalian') => {
+    if (cat === 'pengambilan') return 'SLA Pengambilan'
+    if (cat === 'pengembalian') return 'SLA Pengembalian'
+    return 'SLA Verifikasi'
+  }, [])
+
   // Load SLA month to form
   const loadSlaMonthToForm = useCallback((data: MonthSlaEntry[], targetBulan: string) => {
     const found = data.find(m => m.bulan === targetBulan)
@@ -349,6 +409,17 @@ export default function AdminAkuntansiVerifikasi() {
       setSlaAllPct('0')
     }
   }, [])
+
+  // Switch active SLA category in admin form & table
+  const handleSwitchSlaCategory = (cat: 'capaian' | 'pengambilan' | 'pengembalian') => {
+    setSlaCategory(cat)
+    const targetMonths = cat === 'pengambilan'
+      ? slaMonthsPengambilan
+      : cat === 'pengembalian'
+        ? slaMonthsPengembalian
+        : slaMonthsData
+    loadSlaMonthToForm(targetMonths, slaEditBulan)
+  }
 
   // Load SLA data for a year
   const loadSlaData = useCallback(async (year: number) => {
@@ -368,27 +439,72 @@ export default function AdminAkuntansiVerifikasi() {
       if (data && data.data) {
         setSlaExistingRecordId(data.id)
         setSlaHeaderText(data.data.header_text || 'Service Level Agreement (SLA) Verifikasi Dokumen Tagihan mengukur ketepatan waktu dan efektivitas proses verifikasi tagihan internal maupun eksternal sesuai standar layanan operasional RSCM.')
-        setSlaJudulTabel(data.data.judul_tabel || 'Capaian')
-        setSlaKetCapaian(data.data.keterangan_capaian || 'Capaian persentase SLA verifikasi dokumen tagihan mencerminkan kepatuhan terhadap standar waktu layanan verifikasi. Tingkat capaian yang konsisten mendukung kelancaran arus kas dan kepuasan mitra kerja sama.')
 
-        if (data.data.months && Array.isArray(data.data.months) && data.data.months.length > 0) {
-          setSlaMonthsData(data.data.months)
-          loadSlaMonthToForm(data.data.months, slaEditBulan)
-          return
-        }
+        // Section 1 & Section 2 Texts
+        setSlaJudulInternal(data.data.judul_internal || 'SLA Dokumen Internal')
+        setSlaKetInternal(data.data.keterangan_internal || data.data.keterangan_capaian || 'Pencapaian Service Level Agreement (SLA) untuk dokumen tagihan internal mencakup kepatuhan terhadap standar waktu proses verifikasi, waktu pengambilan dokumen oleh unit kerja, dan waktu pengembalian berkas administrasi di lingkungan RSCM.')
+
+        setSlaJudulEksternal(data.data.judul_eksternal || 'SLA Dokumen Eksternal')
+        setSlaKetEksternal(data.data.keterangan_eksternal || data.data.keterangan_pengambilan || 'Pencapaian Service Level Agreement (SLA) untuk dokumen tagihan eksternal mencakup kepatuhan terhadap standar waktu proses verifikasi tagihan rekanan/vendor, waktu pengambilan dokumen, serta penyelesaian pengembalian dokumen administrasi penyedia pihak ketiga.')
+
+        // 1. SLA Verifikasi (DB key: months)
+        setSlaJudulTabel(data.data.judul_tabel || 'SLA Verifikasi')
+        setSlaKetCapaian(data.data.keterangan_capaian || 'Capaian persentase SLA verifikasi dokumen tagihan mencerminkan kepatuhan terhadap standar waktu layanan verifikasi. Tingkat capaian yang konsisten mendukung kelancaran arus kas dan kepuasan mitra kerja sama.')
+        const mCapaian = (data.data.months && Array.isArray(data.data.months) && data.data.months.length > 0)
+          ? data.data.months
+          : createEmptySlaMonths()
+        setSlaMonthsData(mCapaian)
+
+        // 2. SLA Pengambilan (DB key: months_pengambilan)
+        setSlaJudulPengambilan(data.data.judul_pengambilan || 'SLA Pengambilan')
+        setSlaKetPengambilan(data.data.keterangan_pengambilan || 'Capaian persentase SLA pengambilan dokumen tagihan mengukur efektivitas waktu pengambilan berkas tagihan oleh unit pengusul atau vendor sesuai ketentuan operasional RSCM.')
+        const mPengambilan = (data.data.months_pengambilan && Array.isArray(data.data.months_pengambilan) && data.data.months_pengambilan.length > 0)
+          ? data.data.months_pengambilan
+          : createEmptySlaMonths()
+        setSlaMonthsPengambilan(mPengambilan)
+
+        // 3. SLA Pengembalian (DB key: months_pengembalian)
+        setSlaJudulPengembalian(data.data.judul_pengembalian || 'SLA Pengembalian')
+        setSlaKetPengembalian(data.data.keterangan_pengembalian || 'Capaian persentase SLA pengembalian dokumen tagihan mengukur ketepatan waktu pengembalian berkas tagihan yang belum lengkap atau memerlukan perbaikan ke unit terkait.')
+        const mPengembalian = (data.data.months_pengembalian && Array.isArray(data.data.months_pengembalian) && data.data.months_pengembalian.length > 0)
+          ? data.data.months_pengembalian
+          : createEmptySlaMonths()
+        setSlaMonthsPengembalian(mPengembalian)
+
+        const activeMonths = slaCategory === 'pengambilan' ? mPengambilan : slaCategory === 'pengembalian' ? mPengembalian : mCapaian
+        loadSlaMonthToForm(activeMonths, slaEditBulan)
+        return
       }
 
       setSlaExistingRecordId(null)
       setSlaHeaderText('Service Level Agreement (SLA) Verifikasi Dokumen Tagihan mengukur ketepatan waktu dan efektivitas proses verifikasi tagihan internal maupun eksternal sesuai standar layanan operasional RSCM.')
-      setSlaJudulTabel('Capaian')
+
+      setSlaJudulInternal('SLA Dokumen Internal')
+      setSlaKetInternal('Pencapaian Service Level Agreement (SLA) untuk dokumen tagihan internal mencakup kepatuhan terhadap standar waktu proses verifikasi, waktu pengambilan dokumen oleh unit kerja, dan waktu pengembalian berkas administrasi di lingkungan RSCM.')
+
+      setSlaJudulEksternal('SLA Dokumen Eksternal')
+      setSlaKetEksternal('Pencapaian Service Level Agreement (SLA) untuk dokumen tagihan eksternal mencakup kepatuhan terhadap standar waktu proses verifikasi tagihan rekanan/vendor, waktu pengambilan dokumen, serta penyelesaian pengembalian dokumen administrasi penyedia pihak ketiga.')
+
+      setSlaJudulTabel('SLA Verifikasi')
       setSlaKetCapaian('Capaian persentase SLA verifikasi dokumen tagihan mencerminkan kepatuhan terhadap standar waktu layanan verifikasi. Tingkat capaian yang konsisten mendukung kelancaran arus kas dan kepuasan mitra kerja sama.')
-      const empty = createEmptySlaMonths()
-      setSlaMonthsData(empty)
-      loadSlaMonthToForm(empty, slaEditBulan)
+      const empty1 = createEmptySlaMonths()
+      setSlaMonthsData(empty1)
+
+      setSlaJudulPengambilan('SLA Pengambilan')
+      setSlaKetPengambilan('Capaian persentase SLA pengambilan dokumen tagihan mengukur efektivitas waktu pengambilan berkas tagihan oleh unit pengusul atau vendor sesuai ketentuan operasional RSCM.')
+      const empty2 = createEmptySlaMonths()
+      setSlaMonthsPengambilan(empty2)
+
+      setSlaJudulPengembalian('SLA Pengembalian')
+      setSlaKetPengembalian('Capaian persentase SLA pengembalian dokumen tagihan mengukur ketepatan waktu pengembalian berkas tagihan yang belum lengkap atau memerlukan perbaikan ke unit terkait.')
+      const empty3 = createEmptySlaMonths()
+      setSlaMonthsPengembalian(empty3)
+
+      loadSlaMonthToForm(empty1, slaEditBulan)
     } catch (err: any) {
       console.error(err)
     }
-  }, [supabase, slaEditBulan, loadSlaMonthToForm])
+  }, [supabase, slaEditBulan, slaCategory, loadSlaMonthToForm])
 
   useEffect(() => {
     loadSlaData(slaSelectedYear)
@@ -396,7 +512,12 @@ export default function AdminAkuntansiVerifikasi() {
 
   const handleSelectSlaBulan = (bulan: string) => {
     setSlaEditBulan(bulan)
-    loadSlaMonthToForm(slaMonthsData, bulan)
+    const targetMonths = slaCategory === 'pengambilan'
+      ? slaMonthsPengambilan
+      : slaCategory === 'pengembalian'
+        ? slaMonthsPengembalian
+        : slaMonthsData
+    loadSlaMonthToForm(targetMonths, bulan)
   }
 
   const handleSlaIntChange = (val: string) => {
@@ -427,7 +548,13 @@ export default function AdminAkuntansiVerifikasi() {
     const eksVal = parseFloat(slaEksPct) || 0
     const allVal = parseFloat(slaAllPct) || 0
 
-    const updatedMonths = slaMonthsData.map(m => {
+    const currentMonths = slaCategory === 'pengambilan'
+      ? slaMonthsPengambilan
+      : slaCategory === 'pengembalian'
+        ? slaMonthsPengembalian
+        : slaMonthsData
+
+    const updatedMonths = currentMonths.map(m => {
       if (m.bulan === slaEditBulan) {
         return {
           ...m,
@@ -443,9 +570,19 @@ export default function AdminAkuntansiVerifikasi() {
     const payloadData = {
       tahun: slaSelectedYear,
       header_text: slaHeaderText.trim(),
-      judul_tabel: slaJudulTabel.trim(),
+      judul_internal: slaJudulInternal.trim() || 'SLA Dokumen Internal',
+      keterangan_internal: slaKetInternal.trim(),
+      judul_eksternal: slaJudulEksternal.trim() || 'SLA Dokumen Eksternal',
+      keterangan_eksternal: slaKetEksternal.trim(),
+      judul_tabel: slaJudulTabel.trim() || 'SLA Verifikasi',
       keterangan_capaian: slaKetCapaian.trim(),
-      months: updatedMonths
+      months: slaCategory === 'capaian' ? updatedMonths : slaMonthsData,
+      judul_pengambilan: slaJudulPengambilan.trim() || 'SLA Pengambilan',
+      keterangan_pengambilan: slaKetPengambilan.trim(),
+      months_pengambilan: slaCategory === 'pengambilan' ? updatedMonths : slaMonthsPengambilan,
+      judul_pengembalian: slaJudulPengembalian.trim() || 'SLA Pengembalian',
+      keterangan_pengembalian: slaKetPengembalian.trim(),
+      months_pengembalian: slaCategory === 'pengembalian' ? updatedMonths : slaMonthsPengembalian,
     }
 
     try {
@@ -475,12 +612,20 @@ export default function AdminAkuntansiVerifikasi() {
         if (newRec) setSlaExistingRecordId(newRec.id)
       }
 
-      setSlaMonthsData(updatedMonths)
+      if (slaCategory === 'pengambilan') {
+        setSlaMonthsPengambilan(updatedMonths)
+      } else if (slaCategory === 'pengembalian') {
+        setSlaMonthsPengembalian(updatedMonths)
+      } else {
+        setSlaMonthsData(updatedMonths)
+      }
+
       if (!slaAvailableYears.includes(slaSelectedYear)) {
         setSlaAvailableYears(prev => Array.from(new Set([...prev, slaSelectedYear])).sort((a, b) => b - a))
       }
 
-      setMessage({ type: 'ok', text: `Data SLA bulan ${slaEditBulan} tahun ${slaSelectedYear} berhasil disimpan!` })
+      const activeTitle = getActiveSlaTitle(slaCategory)
+      setMessage({ type: 'ok', text: `Data ${activeTitle} bulan ${slaEditBulan} tahun ${slaSelectedYear} berhasil disimpan!` })
     } catch (err: any) {
       setMessage({ type: 'err', text: 'Gagal menyimpan SLA: ' + err.message })
     } finally {
@@ -496,9 +641,19 @@ export default function AdminAkuntansiVerifikasi() {
     const payloadData = {
       tahun: slaSelectedYear,
       header_text: slaHeaderText.trim(),
-      judul_tabel: slaJudulTabel.trim(),
+      judul_internal: slaJudulInternal.trim() || 'SLA Dokumen Internal',
+      keterangan_internal: slaKetInternal.trim(),
+      judul_eksternal: slaJudulEksternal.trim() || 'SLA Dokumen Eksternal',
+      keterangan_eksternal: slaKetEksternal.trim(),
+      judul_tabel: slaJudulTabel.trim() || 'SLA Verifikasi',
       keterangan_capaian: slaKetCapaian.trim(),
-      months: slaMonthsData
+      months: slaMonthsData,
+      judul_pengambilan: slaJudulPengambilan.trim() || 'SLA Pengambilan',
+      keterangan_pengambilan: slaKetPengambilan.trim(),
+      months_pengambilan: slaMonthsPengambilan,
+      judul_pengembalian: slaJudulPengembalian.trim() || 'SLA Pengembalian',
+      keterangan_pengembalian: slaKetPengembalian.trim(),
+      months_pengembalian: slaMonthsPengembalian,
     }
 
     try {
@@ -525,7 +680,7 @@ export default function AdminAkuntansiVerifikasi() {
         if (newRec) setSlaExistingRecordId(newRec.id)
       }
 
-      setMessage({ type: 'ok', text: `Teks catatan SLA tahun ${slaSelectedYear} berhasil disimpan!` })
+      setMessage({ type: 'ok', text: `Teks judul dan catatan SLA tahun ${slaSelectedYear} berhasil disimpan!` })
     } catch (err: any) {
       setMessage({ type: 'err', text: 'Gagal menyimpan teks SLA: ' + err.message })
     } finally {
@@ -535,9 +690,16 @@ export default function AdminAkuntansiVerifikasi() {
   }
 
   const handleResetSlaMonth = async (bulan: string) => {
-    if (!confirm(`Reset data SLA bulan ${bulan} tahun ${slaSelectedYear} menjadi 0%?`)) return
+    const activeTitle = getActiveSlaTitle(slaCategory)
+    if (!confirm(`Reset data ${activeTitle} bulan ${bulan} tahun ${slaSelectedYear} menjadi 0%?`)) return
 
-    const updatedMonths = slaMonthsData.map(m => {
+    const currentMonths = slaCategory === 'pengambilan'
+      ? slaMonthsPengambilan
+      : slaCategory === 'pengembalian'
+        ? slaMonthsPengembalian
+        : slaMonthsData
+
+    const updatedMonths = currentMonths.map(m => {
       if (m.bulan === bulan) {
         return {
           ...m,
@@ -550,7 +712,14 @@ export default function AdminAkuntansiVerifikasi() {
       return m
     })
 
-    setSlaMonthsData(updatedMonths)
+    if (slaCategory === 'pengambilan') {
+      setSlaMonthsPengambilan(updatedMonths)
+    } else if (slaCategory === 'pengembalian') {
+      setSlaMonthsPengembalian(updatedMonths)
+    } else {
+      setSlaMonthsData(updatedMonths)
+    }
+
     if (slaEditBulan === bulan) {
       setSlaIntPct('0')
       setSlaEksPct('0')
@@ -561,9 +730,15 @@ export default function AdminAkuntansiVerifikasi() {
       const payloadData = {
         tahun: slaSelectedYear,
         header_text: slaHeaderText.trim(),
-        judul_tabel: slaJudulTabel.trim(),
+        judul_tabel: slaJudulTabel.trim() || 'Capaian',
         keterangan_capaian: slaKetCapaian.trim(),
-        months: updatedMonths
+        months: slaCategory === 'capaian' ? updatedMonths : slaMonthsData,
+        judul_pengambilan: slaJudulPengambilan.trim() || 'Pengambilan Dokumen',
+        keterangan_pengambilan: slaKetPengambilan.trim(),
+        months_pengambilan: slaCategory === 'pengambilan' ? updatedMonths : slaMonthsPengambilan,
+        judul_pengembalian: slaJudulPengembalian.trim() || 'Pengembalian Dokumen',
+        keterangan_pengembalian: slaKetPengembalian.trim(),
+        months_pengembalian: slaCategory === 'pengembalian' ? updatedMonths : slaMonthsPengembalian,
       }
 
       await supabase
@@ -572,25 +747,40 @@ export default function AdminAkuntansiVerifikasi() {
         .eq('id', slaExistingRecordId)
     }
 
-    setMessage({ type: 'ok', text: `Data SLA bulan ${bulan} telah direset menjadi 0%.` })
+    setMessage({ type: 'ok', text: `Data ${activeTitle} bulan ${bulan} telah direset menjadi 0%.` })
     setTimeout(() => setMessage(null), 3000)
   }
 
   const handleResetAllSlaMonths = async () => {
-    if (!confirm(`YAKIN ingin mereset SEMUA bulan data SLA tahun ${slaSelectedYear} menjadi 0%?`)) return
+    const activeTitle = getActiveSlaTitle(slaCategory)
+    if (!confirm(`YAKIN ingin mereset SEMUA bulan data ${activeTitle} tahun ${slaSelectedYear} menjadi 0%?`)) return
 
     setLoading(true)
     const empty = createEmptySlaMonths()
-    setSlaMonthsData(empty)
+
+    if (slaCategory === 'pengambilan') {
+      setSlaMonthsPengambilan(empty)
+    } else if (slaCategory === 'pengembalian') {
+      setSlaMonthsPengembalian(empty)
+    } else {
+      setSlaMonthsData(empty)
+    }
+
     loadSlaMonthToForm(empty, slaEditBulan)
 
     if (slaExistingRecordId) {
       const payloadData = {
         tahun: slaSelectedYear,
         header_text: slaHeaderText.trim(),
-        judul_tabel: slaJudulTabel.trim(),
+        judul_tabel: slaJudulTabel.trim() || 'Capaian',
         keterangan_capaian: slaKetCapaian.trim(),
-        months: empty
+        months: slaCategory === 'capaian' ? empty : slaMonthsData,
+        judul_pengambilan: slaJudulPengambilan.trim() || 'Pengambilan Dokumen',
+        keterangan_pengambilan: slaKetPengambilan.trim(),
+        months_pengambilan: slaCategory === 'pengambilan' ? empty : slaMonthsPengambilan,
+        judul_pengembalian: slaJudulPengembalian.trim() || 'Pengembalian Dokumen',
+        keterangan_pengembalian: slaKetPengembalian.trim(),
+        months_pengembalian: slaCategory === 'pengembalian' ? empty : slaMonthsPengembalian,
       }
 
       try {
@@ -599,7 +789,7 @@ export default function AdminAkuntansiVerifikasi() {
           .update({ data: payloadData })
           .eq('id', slaExistingRecordId)
 
-        setMessage({ type: 'ok', text: `Semua bulan data SLA tahun ${slaSelectedYear} telah direset menjadi 0%.` })
+        setMessage({ type: 'ok', text: `Semua bulan data ${activeTitle} tahun ${slaSelectedYear} telah direset menjadi 0%.` })
       } catch (err: any) {
         setMessage({ type: 'err', text: 'Gagal mereset SLA: ' + err.message })
       } finally {
@@ -608,7 +798,7 @@ export default function AdminAkuntansiVerifikasi() {
       }
     } else {
       setLoading(false)
-      setMessage({ type: 'ok', text: `Semua bulan data SLA tahun ${slaSelectedYear} telah direset menjadi 0%.` })
+      setMessage({ type: 'ok', text: `Semua bulan data ${activeTitle} tahun ${slaSelectedYear} telah direset menjadi 0%.` })
       setTimeout(() => setMessage(null), 3000)
     }
   }
@@ -672,6 +862,16 @@ export default function AdminAkuntansiVerifikasi() {
     }
   }, [])
 
+  const getActiveBaTitle = (cat: 'penyedia' | 'nominal') => {
+    return cat === 'nominal' ? (baJudulNominal || 'Nominal BA Tutup Tagihan') : (baJudulTabel || 'BA Tutup Tagihan')
+  }
+
+  const handleSwitchBaCategory = (cat: 'penyedia' | 'nominal') => {
+    setBaCategory(cat)
+    const targetMonths = cat === 'nominal' ? baMonthsNominal : baMonthsData
+    loadBaMonthToForm(targetMonths, baEditBulan)
+  }
+
   const loadBaData = useCallback(async (year: number) => {
     try {
       const { data, error } = await supabase
@@ -689,27 +889,72 @@ export default function AdminAkuntansiVerifikasi() {
       if (data && data.data) {
         setBaExistingRecordId(data.id)
         setBaHeaderText(data.data.header_text || 'Layanan Berita Acara (BA) Tutup Tagihan memastikan seluruh proses penagihan dari penyedia/vendor telah terverifikasi, terkonfirmasi, dan diterbitkan dokumen BA resmi untuk penyelesaian administrasi keuangan.')
-        setBaJudulTabel(data.data.judul_tabel || 'BA Tutup Tagihan')
-        setBaKet(data.data.keterangan || 'Monitoring penyelesaian Berita Acara (BA) Tutup Tagihan bagi penyedia/vendor barang dan jasa di lingkungan RSUPN Dr. Cipto Mangunkusumo.')
 
-        if (data.data.months && Array.isArray(data.data.months) && data.data.months.length > 0) {
-          setBaMonthsData(data.data.months)
-          loadBaMonthToForm(data.data.months, baEditBulan)
-          return
-        }
+        // Section 1: Jenis Tagihan
+        setBaJudulJenisTagihan(data.data.judul_jenis_tagihan || 'Jenis Tagihan')
+        setBaKetJenisTagihan(data.data.keterangan_jenis_tagihan || 'Rekapitulasi proporsi tagihan yang masuk ke RSCM berdasarkan klasifikasi dan kelompok kebutuhan belanja operasional, perbekalan farmasi, serta layanan medis.')
+        const rawSavedItems = (data.data.jenis_tagihan_items !== undefined && Array.isArray(data.data.jenis_tagihan_items))
+          ? data.data.jenis_tagihan_items
+          : []
+        const normalizedSavedItems = rawSavedItems.map((it: any) => ({
+          ...it,
+          jumlah_penyedia: it.jumlah_penyedia ?? it.jumlah ?? 0,
+          sudah_terbit_ba: it.sudah_terbit_ba ?? 0,
+          jumlah: it.jumlah_penyedia ?? it.jumlah ?? 0,
+        }))
+        setBaJenisTagihanItems(normalizedSavedItems)
+
+        // Section 2: BA Tutup Tagihan Berdasarkan Proses
+        const rawJudulTabel = data.data.judul_tabel
+        const normalizedJudulTabel = (!rawJudulTabel || rawJudulTabel === 'BA Tutup Tagihan')
+          ? 'BA Tutup Tagihan Berdasarkan Proses'
+          : rawJudulTabel
+        setBaJudulTabel(normalizedJudulTabel)
+        setBaKet(data.data.keterangan || 'Monitoring penyelesaian Berita Acara (BA) Tutup Tagihan bagi penyedia/vendor barang dan jasa di lingkungan RSUPN Dr. Cipto Mangunkusumo.')
+        const mPenyedia = (data.data.months && Array.isArray(data.data.months) && data.data.months.length > 0)
+          ? data.data.months
+          : createEmptyBaMonths()
+        setBaMonthsData(mPenyedia)
+
+        // Section 3: Nominal BA Tutup Tagihan Berdasarkan Nominal (Rp)
+        const rawJudulNominal = data.data.judul_nominal
+        const normalizedJudulNominal = (!rawJudulNominal || rawJudulNominal === 'Nominal BA Tutup Tagihan')
+          ? 'BA Tutup Tagihan Berdasarkan Nominal (Rp)'
+          : rawJudulNominal
+        setBaJudulNominal(normalizedJudulNominal)
+        setBaKetNominal(data.data.keterangan_nominal || 'Monitoring nominal penyelesaian Berita Acara (BA) Tutup Tagihan berdasarkan total nilai penagihan dari penyedia/vendor barang dan jasa di lingkungan RSUPN Dr. Cipto Mangunkusumo.')
+        const mNominal = (data.data.months_nominal && Array.isArray(data.data.months_nominal) && data.data.months_nominal.length > 0)
+          ? data.data.months_nominal
+          : createEmptyBaMonths()
+        setBaMonthsNominal(mNominal)
+
+        const activeTarget = baCategory === 'nominal' ? mNominal : mPenyedia
+        loadBaMonthToForm(activeTarget, baEditBulan)
+        return
       }
 
       setBaExistingRecordId(null)
       setBaHeaderText('Layanan Berita Acara (BA) Tutup Tagihan memastikan seluruh proses penagihan dari penyedia/vendor telah terverifikasi, terkonfirmasi, dan diterbitkan dokumen BA resmi untuk penyelesaian administrasi keuangan.')
-      setBaJudulTabel('BA Tutup Tagihan')
+
+      setBaJudulJenisTagihan('Jenis Tagihan')
+      setBaKetJenisTagihan('Rekapitulasi proporsi tagihan yang masuk ke RSCM berdasarkan klasifikasi dan kelompok kebutuhan belanja operasional, perbekalan farmasi, serta layanan medis.')
+      setBaJenisTagihanItems([])
+
+      setBaJudulTabel('BA Tutup Tagihan Berdasarkan Proses')
       setBaKet('Monitoring penyelesaian Berita Acara (BA) Tutup Tagihan bagi penyedia/vendor barang dan jasa di lingkungan RSUPN Dr. Cipto Mangunkusumo.')
-      const empty = createEmptyBaMonths()
-      setBaMonthsData(empty)
-      loadBaMonthToForm(empty, baEditBulan)
+      const empty1 = createEmptyBaMonths()
+      setBaMonthsData(empty1)
+
+      setBaJudulNominal('BA Tutup Tagihan Berdasarkan Nominal (Rp)')
+      setBaKetNominal('Monitoring nominal penyelesaian Berita Acara (BA) Tutup Tagihan berdasarkan total nilai penagihan dari penyedia/vendor barang dan jasa di lingkungan RSUPN Dr. Cipto Mangunkusumo.')
+      const empty2 = createEmptyBaMonths()
+      setBaMonthsNominal(empty2)
+
+      loadBaMonthToForm(empty1, baEditBulan)
     } catch (err: any) {
       console.error(err)
     }
-  }, [supabase, baEditBulan, loadBaMonthToForm])
+  }, [supabase, baEditBulan, baCategory, loadBaMonthToForm])
 
   useEffect(() => {
     loadBaData(baSelectedYear)
@@ -717,7 +962,8 @@ export default function AdminAkuntansiVerifikasi() {
 
   const handleSelectBaBulan = (bulan: string) => {
     setBaEditBulan(bulan)
-    loadBaMonthToForm(baMonthsData, bulan)
+    const targetMonths = baCategory === 'nominal' ? baMonthsNominal : baMonthsData
+    loadBaMonthToForm(targetMonths, bulan)
   }
 
   const updateBaTotalIfAuto = (belum: string, penagihan: string, buatBa: string, terbitBa: string) => {
@@ -760,7 +1006,8 @@ export default function AdminAkuntansiVerifikasi() {
     const buatBaVal = parseInt(baProsesPembuatanBa) || 0
     const terbitBaVal = parseInt(baSudahTerbitBa) || 0
 
-    const updatedMonths = baMonthsData.map(m => {
+    const currentMonths = baCategory === 'nominal' ? baMonthsNominal : baMonthsData
+    const updatedMonths = currentMonths.map(m => {
       if (m.bulan === baEditBulan) {
         return {
           ...m,
@@ -778,9 +1025,15 @@ export default function AdminAkuntansiVerifikasi() {
     const payloadData = {
       tahun: baSelectedYear,
       header_text: baHeaderText.trim(),
-      judul_tabel: baJudulTabel.trim(),
+      judul_jenis_tagihan: baJudulJenisTagihan.trim() || 'Jenis Tagihan',
+      keterangan_jenis_tagihan: baKetJenisTagihan.trim(),
+      jenis_tagihan_items: baJenisTagihanItems,
+      judul_tabel: baJudulTabel.trim() || 'BA Tutup Tagihan',
       keterangan: baKet.trim(),
-      months: updatedMonths
+      months: baCategory === 'penyedia' ? updatedMonths : baMonthsData,
+      judul_nominal: baJudulNominal.trim() || 'Nominal BA Tutup Tagihan',
+      keterangan_nominal: baKetNominal.trim(),
+      months_nominal: baCategory === 'nominal' ? updatedMonths : baMonthsNominal,
     }
 
     try {
@@ -810,12 +1063,18 @@ export default function AdminAkuntansiVerifikasi() {
         if (newRec) setBaExistingRecordId(newRec.id)
       }
 
-      setBaMonthsData(updatedMonths)
+      if (baCategory === 'nominal') {
+        setBaMonthsNominal(updatedMonths)
+      } else {
+        setBaMonthsData(updatedMonths)
+      }
+
       if (!baAvailableYears.includes(baSelectedYear)) {
         setBaAvailableYears(prev => Array.from(new Set([...prev, baSelectedYear])).sort((a, b) => b - a))
       }
 
-      setMessage({ type: 'ok', text: `Data BA Tutup Tagihan bulan ${baEditBulan} tahun ${baSelectedYear} berhasil disimpan!` })
+      const activeTitle = getActiveBaTitle(baCategory)
+      setMessage({ type: 'ok', text: `Data ${activeTitle} bulan ${baEditBulan} tahun ${baSelectedYear} berhasil disimpan!` })
     } catch (err: any) {
       setMessage({ type: 'err', text: 'Gagal menyimpan BA Tutup Tagihan: ' + err.message })
     } finally {
@@ -831,9 +1090,15 @@ export default function AdminAkuntansiVerifikasi() {
     const payloadData = {
       tahun: baSelectedYear,
       header_text: baHeaderText.trim(),
-      judul_tabel: baJudulTabel.trim(),
+      judul_jenis_tagihan: baJudulJenisTagihan.trim() || 'Jenis Tagihan',
+      keterangan_jenis_tagihan: baKetJenisTagihan.trim(),
+      jenis_tagihan_items: baJenisTagihanItems,
+      judul_tabel: baJudulTabel.trim() || 'BA Tutup Tagihan',
       keterangan: baKet.trim(),
-      months: baMonthsData
+      months: baMonthsData,
+      judul_nominal: baJudulNominal.trim() || 'Nominal BA Tutup Tagihan',
+      keterangan_nominal: baKetNominal.trim(),
+      months_nominal: baMonthsNominal,
     }
 
     try {
@@ -860,7 +1125,7 @@ export default function AdminAkuntansiVerifikasi() {
         if (newRec) setBaExistingRecordId(newRec.id)
       }
 
-      setMessage({ type: 'ok', text: `Teks catatan BA Tutup Tagihan tahun ${baSelectedYear} berhasil disimpan!` })
+      setMessage({ type: 'ok', text: `Teks judul & catatan BA Tutup Tagihan tahun ${baSelectedYear} berhasil disimpan!` })
     } catch (err: any) {
       setMessage({ type: 'err', text: 'Gagal menyimpan teks BA: ' + err.message })
     } finally {
@@ -869,10 +1134,159 @@ export default function AdminAkuntansiVerifikasi() {
     }
   }
 
-  const handleResetBaMonth = async (bulan: string) => {
-    if (!confirm(`Reset data BA Tutup Tagihan bulan ${bulan} tahun ${baSelectedYear} menjadi 0?`)) return
+  // ================= HANDLERS MANAGEMENT JENIS TAGIHAN =================
+  const handleAddOrUpdateJenisItem = () => {
+    if (!newJenisNama.trim()) {
+      alert('Nama jenis tagihan tidak boleh kosong.')
+      return
+    }
+    const penyediaNum = parseInt(newJenisJumlahPenyedia) || 0
+    const terbitNum = parseInt(newJenisSudahTerbitBa) || 0
 
-    const updatedMonths = baMonthsData.map(m => {
+    let updatedList: typeof baJenisTagihanItems = []
+    if (editingJenisId) {
+      // Update item yang ada
+      updatedList = baJenisTagihanItems.map(item => {
+        if (item.id === editingJenisId) {
+          return {
+            ...item,
+            jenis: newJenisNama.trim(),
+            jumlah_penyedia: penyediaNum,
+            sudah_terbit_ba: terbitNum,
+            jumlah: penyediaNum,
+          }
+        }
+        return item
+      })
+      setEditingJenisId(null)
+    } else {
+      // Tambah item baru
+      const newItem = {
+        id: Date.now().toString(),
+        jenis: newJenisNama.trim(),
+        jumlah_penyedia: penyediaNum,
+        sudah_terbit_ba: terbitNum,
+        jumlah: penyediaNum,
+      }
+      updatedList = [...baJenisTagihanItems, newItem]
+    }
+    setBaJenisTagihanItems(updatedList)
+    setNewJenisNama('')
+    setNewJenisJumlahPenyedia('')
+    setNewJenisSudahTerbitBa('')
+
+    saveJenisTagihanItemsToDb(updatedList).then(ok => {
+      if (ok) {
+        setMessage({ type: 'ok', text: 'Data jenis tagihan berhasil disimpan ke database!' })
+        setTimeout(() => setMessage(null), 3000)
+      }
+    })
+  }
+
+  const handleEditJenisItem = (item: { id: string; jenis: string; jumlah?: number; jumlah_penyedia?: number; sudah_terbit_ba?: number }) => {
+    setEditingJenisId(item.id)
+    setNewJenisNama(item.jenis)
+    setNewJenisJumlahPenyedia(String(item.jumlah_penyedia ?? item.jumlah ?? 0))
+    setNewJenisSudahTerbitBa(String(item.sudah_terbit_ba ?? 0))
+  }
+
+  const handleCancelEditJenis = () => {
+    setEditingJenisId(null)
+    setNewJenisNama('')
+    setNewJenisJumlahPenyedia('')
+    setNewJenisSudahTerbitBa('')
+  }
+
+  const saveJenisTagihanItemsToDb = async (itemsToSave: typeof baJenisTagihanItems) => {
+    setLoading(true)
+    const payloadData = {
+      tahun: baSelectedYear,
+      header_text: baHeaderText.trim(),
+      judul_jenis_tagihan: baJudulJenisTagihan.trim() || 'Jenis Tagihan',
+      keterangan_jenis_tagihan: baKetJenisTagihan.trim(),
+      jenis_tagihan_items: itemsToSave,
+      judul_tabel: baJudulTabel.trim() || 'BA Tutup Tagihan Berdasarkan Proses',
+      keterangan: baKet.trim(),
+      months: baMonthsData,
+      judul_nominal: baJudulNominal.trim() || 'BA Tutup Tagihan Berdasarkan Nominal (Rp)',
+      keterangan_nominal: baKetNominal.trim(),
+      months_nominal: baMonthsNominal,
+    }
+
+    try {
+      if (baExistingRecordId) {
+        const { error } = await supabase
+          .from('financial_reports_data')
+          .update({ data: payloadData })
+          .eq('id', baExistingRecordId)
+
+        if (error) throw error
+      } else {
+        const { data: newRec, error } = await supabase
+          .from('financial_reports_data')
+          .insert({
+            category: 'verifikasi_ba_tutup_tagihan',
+            year: baSelectedYear,
+            item_name: `ba_${baSelectedYear}`,
+            data: payloadData
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+        if (newRec) setBaExistingRecordId(newRec.id)
+      }
+      return true
+    } catch (err: any) {
+      console.error('Error saving jenis tagihan to db:', err)
+      setMessage({ type: 'err', text: 'Gagal menyimpan perubahan ke database: ' + err.message })
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteJenisItem = async (id: string) => {
+    if (!confirm('Hapus jenis tagihan ini? Data di database akan langsung diperbarui.')) return
+    const updated = baJenisTagihanItems.filter(item => item.id !== id)
+    setBaJenisTagihanItems(updated)
+    if (editingJenisId === id) {
+      handleCancelEditJenis()
+    }
+    const ok = await saveJenisTagihanItemsToDb(updated)
+    if (ok) {
+      setMessage({ type: 'ok', text: 'Item jenis tagihan berhasil dihapus dari database!' })
+      setTimeout(() => setMessage(null), 3000)
+    }
+  }
+
+  const handleClearAllJenisTagihan = async () => {
+    if (!confirm(`Yakin ingin MENGHAPUS SEMUA item jenis tagihan untuk tahun ${baSelectedYear}?`)) return
+    setBaJenisTagihanItems([])
+    if (editingJenisId) {
+      handleCancelEditJenis()
+    }
+    const ok = await saveJenisTagihanItemsToDb([])
+    if (ok) {
+      setMessage({ type: 'ok', text: `Semua item jenis tagihan tahun ${baSelectedYear} berhasil dikosongkan!` })
+      setTimeout(() => setMessage(null), 3000)
+    }
+  }
+
+  const handleSaveJenisTagihanList = async () => {
+    const ok = await saveJenisTagihanItemsToDb(baJenisTagihanItems)
+    if (ok) {
+      setMessage({ type: 'ok', text: `Daftar Jenis Tagihan tahun ${baSelectedYear} berhasil disimpan!` })
+      setTimeout(() => setMessage(null), 3500)
+    }
+  }
+
+  const handleResetBaMonth = async (bulan: string) => {
+    const activeTitle = getActiveBaTitle(baCategory)
+    if (!confirm(`Reset data ${activeTitle} bulan ${bulan} tahun ${baSelectedYear} menjadi 0?`)) return
+
+    const currentMonths = baCategory === 'nominal' ? baMonthsNominal : baMonthsData
+    const updatedMonths = currentMonths.map(m => {
       if (m.bulan === bulan) {
         return {
           ...m,
@@ -887,7 +1301,12 @@ export default function AdminAkuntansiVerifikasi() {
       return m
     })
 
-    setBaMonthsData(updatedMonths)
+    if (baCategory === 'nominal') {
+      setBaMonthsNominal(updatedMonths)
+    } else {
+      setBaMonthsData(updatedMonths)
+    }
+
     if (baEditBulan === bulan) {
       setBaTotalPenyedia('0')
       setBaBelumKonfirmasi('0')
@@ -900,9 +1319,15 @@ export default function AdminAkuntansiVerifikasi() {
       const payloadData = {
         tahun: baSelectedYear,
         header_text: baHeaderText.trim(),
-        judul_tabel: baJudulTabel.trim(),
+        judul_jenis_tagihan: baJudulJenisTagihan.trim() || 'Jenis Tagihan',
+        keterangan_jenis_tagihan: baKetJenisTagihan.trim(),
+        jenis_tagihan_items: baJenisTagihanItems,
+        judul_tabel: baJudulTabel.trim() || 'BA Tutup Tagihan',
         keterangan: baKet.trim(),
-        months: updatedMonths
+        months: baCategory === 'penyedia' ? updatedMonths : baMonthsData,
+        judul_nominal: baJudulNominal.trim() || 'Nominal BA Tutup Tagihan',
+        keterangan_nominal: baKetNominal.trim(),
+        months_nominal: baCategory === 'nominal' ? updatedMonths : baMonthsNominal,
       }
 
       await supabase
@@ -911,25 +1336,36 @@ export default function AdminAkuntansiVerifikasi() {
         .eq('id', baExistingRecordId)
     }
 
-    setMessage({ type: 'ok', text: `Data BA Tutup Tagihan bulan ${bulan} telah direset menjadi 0.` })
+    setMessage({ type: 'ok', text: `Data ${activeTitle} bulan ${bulan} telah direset menjadi 0.` })
     setTimeout(() => setMessage(null), 3000)
   }
 
   const handleResetAllBaMonths = async () => {
-    if (!confirm(`YAKIN ingin mereset SEMUA bulan data BA Tutup Tagihan tahun ${baSelectedYear} menjadi 0?`)) return
+    const activeTitle = getActiveBaTitle(baCategory)
+    if (!confirm(`YAKIN ingin mereset SEMUA bulan data ${activeTitle} tahun ${baSelectedYear} menjadi 0?`)) return
 
     setLoading(true)
     const empty = createEmptyBaMonths()
-    setBaMonthsData(empty)
+    if (baCategory === 'nominal') {
+      setBaMonthsNominal(empty)
+    } else {
+      setBaMonthsData(empty)
+    }
     loadBaMonthToForm(empty, baEditBulan)
 
     if (baExistingRecordId) {
       const payloadData = {
         tahun: baSelectedYear,
         header_text: baHeaderText.trim(),
-        judul_tabel: baJudulTabel.trim(),
+        judul_jenis_tagihan: baJudulJenisTagihan.trim() || 'Jenis Tagihan',
+        keterangan_jenis_tagihan: baKetJenisTagihan.trim(),
+        jenis_tagihan_items: baJenisTagihanItems,
+        judul_tabel: baJudulTabel.trim() || 'BA Tutup Tagihan',
         keterangan: baKet.trim(),
-        months: empty
+        months: baCategory === 'penyedia' ? empty : baMonthsData,
+        judul_nominal: baJudulNominal.trim() || 'Nominal BA Tutup Tagihan',
+        keterangan_nominal: baKetNominal.trim(),
+        months_nominal: baCategory === 'nominal' ? empty : baMonthsNominal,
       }
 
       try {
@@ -938,7 +1374,7 @@ export default function AdminAkuntansiVerifikasi() {
           .update({ data: payloadData })
           .eq('id', baExistingRecordId)
 
-        setMessage({ type: 'ok', text: `Semua bulan data BA Tutup Tagihan tahun ${baSelectedYear} telah direset menjadi 0.` })
+        setMessage({ type: 'ok', text: `Semua bulan data ${activeTitle} tahun ${baSelectedYear} telah direset menjadi 0.` })
       } catch (err: any) {
         setMessage({ type: 'err', text: 'Gagal mereset BA: ' + err.message })
       } finally {
@@ -947,10 +1383,11 @@ export default function AdminAkuntansiVerifikasi() {
       }
     } else {
       setLoading(false)
-      setMessage({ type: 'ok', text: `Semua bulan data BA Tutup Tagihan tahun ${baSelectedYear} telah direset menjadi 0.` })
+      setMessage({ type: 'ok', text: `Semua bulan data ${activeTitle} tahun ${baSelectedYear} telah direset menjadi 0.` })
       setTimeout(() => setMessage(null), 3000)
     }
   }
+
 
   const handleAddNewBaYear = () => {
     const y = parseInt(baNewYearInput)
@@ -1953,16 +2390,16 @@ export default function AdminAkuntansiVerifikasi() {
       {/* ================= TAB 2: SLA (CAPAIAN) ================= */}
       {activeAdminTab === 'sla' && (
         <div className="space-y-6">
-          {/* ================= CARD 1: FORM INPUT CAPAIAN SLA PER BULAN ================= */}
+          {/* ================= CARD 1: FORM INPUT SLA PER BULAN ================= */}
           <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-100">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
               <div>
                 <h2 className="font-nav font-bold text-gray-800 text-lg flex items-center gap-2">
                   <Clock size={20} style={{ color: '#01bcce' }} />
-                  Form Input Capaian SLA (%)
+                  Form Input SLA: {getActiveSlaTitle(slaCategory)} (%)
                 </h2>
                 <p className="font-nav text-xs text-gray-500 mt-0.5">
-                  Pilih Tahun dan Bulan yang ingin diisi/diedit, lalu masukkan persentase capaian SLA Internal dan Eksternal.
+                  Pilih Kategori, Tahun, dan Bulan yang ingin diisi/diedit, lalu masukkan persentase capaian SLA Internal dan Eksternal.
                 </p>
               </div>
 
@@ -1977,6 +2414,38 @@ export default function AdminAkuntansiVerifikasi() {
                     <AlertTriangle size={13} /> Data SLA Tahun {slaSelectedYear} Belum Tersimpan (Kosong)
                   </span>
                 )}
+              </div>
+            </div>
+
+            {/* SWITCHER KATEGORI SLA: Capaian, Pengambilan Dokumen, Pengembalian Dokumen */}
+            <div className="mb-6">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-500 mb-2 font-nav">
+                Pilih Kategori SLA yang Ingin Diinput:
+              </label>
+              <div className="flex items-center gap-2 p-1.5 bg-[#f1f5f9] rounded-2xl border border-gray-200 overflow-x-auto">
+                {[
+                  { id: 'capaian', label: 'SLA Verifikasi', icon: TrendingUp },
+                  { id: 'pengambilan', label: 'SLA Pengambilan', icon: FileDown },
+                  { id: 'pengembalian', label: 'SLA Pengembalian', icon: FileUp },
+                ].map(cat => {
+                  const Icon = cat.icon
+                  const isActive = slaCategory === cat.id
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleSwitchSlaCategory(cat.id as 'capaian' | 'pengambilan' | 'pengembalian')}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-nav text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+                        isActive
+                          ? 'bg-[#00282b] text-[#d0db41] shadow-md shadow-[#00282b]/20 scale-[1.01]'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-white/70'
+                      }`}
+                    >
+                      <Icon size={15} className={isActive ? 'text-[#01bcce]' : 'text-gray-400'} />
+                      <span>{cat.label}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -2034,9 +2503,9 @@ export default function AdminAkuntansiVerifikasi() {
                 </div>
               </div>
 
-              {/* Status Bulan Ini */}
+              {/* Status Kategori & Bulan Ini */}
               <div className="text-xs font-nav text-gray-500 flex items-center gap-2">
-                <span>Mengedit: <strong className="text-[#00282b]">{slaEditBulan} {slaSelectedYear}</strong></span>
+                <span>Kategori: <strong className="text-[#01bcce]">{getActiveSlaTitle(slaCategory)}</strong> — Bulan: <strong className="text-[#00282b]">{slaEditBulan} {slaSelectedYear}</strong></span>
               </div>
             </div>
 
@@ -2046,7 +2515,7 @@ export default function AdminAkuntansiVerifikasi() {
               <div className="bg-[#f0fdf4]/50 border border-emerald-100 rounded-2xl p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-2">
                   <label className="font-nav font-black text-xs uppercase tracking-wider text-[#00282b]">
-                    Capaian Internal (%)
+                    Internal (%)
                   </label>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-[#01bcce]">
                     Internal
@@ -2068,7 +2537,7 @@ export default function AdminAkuntansiVerifikasi() {
                   </span>
                 </div>
                 <p className="font-nav text-[11px] text-gray-500 mt-2">
-                  Persentase ketepatan waktu verifikasi tagihan internal
+                  Persentase ketepatan waktu {getActiveSlaTitle(slaCategory).toLowerCase()} internal
                 </p>
               </div>
 
@@ -2076,7 +2545,7 @@ export default function AdminAkuntansiVerifikasi() {
               <div className="bg-[#f8fafc] border border-gray-200 rounded-2xl p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-2">
                   <label className="font-nav font-black text-xs uppercase tracking-wider text-[#00282b]">
-                    Capaian Eksternal (%)
+                    Eksternal (%)
                   </label>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-200 text-[#00282b]">
                     Eksternal
@@ -2098,7 +2567,7 @@ export default function AdminAkuntansiVerifikasi() {
                   </span>
                 </div>
                 <p className="font-nav text-[11px] text-gray-500 mt-2">
-                  Persentase ketepatan waktu verifikasi tagihan vendor/eksternal
+                  Persentase ketepatan waktu {getActiveSlaTitle(slaCategory).toLowerCase()} vendor/eksternal
                 </p>
               </div>
 
@@ -2106,7 +2575,7 @@ export default function AdminAkuntansiVerifikasi() {
               <div className="bg-[#ecfdf5] border border-emerald-200 rounded-2xl p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-2">
                   <label className="font-nav font-black text-xs uppercase tracking-wider text-[#065f46]">
-                    Capaian Keseluruhan (%)
+                    Keseluruhan (%)
                   </label>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                     Total
@@ -2168,7 +2637,7 @@ export default function AdminAkuntansiVerifikasi() {
                   onClick={handleResetAllSlaMonths}
                   className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-100 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Trash2 size={14} /> Reset Semua Bulan {slaSelectedYear}
+                  <Trash2 size={14} /> Reset Semua Bulan {getActiveSlaTitle(slaCategory)} ({slaSelectedYear})
                 </button>
               </div>
 
@@ -2180,66 +2649,109 @@ export default function AdminAkuntansiVerifikasi() {
                 style={{ background: '#00282b' }}
               >
                 <Save size={16} />
-                {loading ? 'Menyimpan...' : `Simpan Data ${slaEditBulan} ${slaSelectedYear}`}
+                {loading ? 'Menyimpan...' : `Simpan Data ${getActiveSlaTitle(slaCategory)} - ${slaEditBulan} ${slaSelectedYear}`}
               </button>
             </div>
           </div>
 
-          {/* CARD 2: PENGATURAN TEKS CATATAN SLA */}
+          {/* CARD 2: PENGATURAN TEKS CATATAN & JUDUL KATEGORI SLA */}
           <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
               <div>
                 <h2 className="font-nav font-bold text-gray-800 text-lg flex items-center gap-2">
                   <FileText size={20} style={{ color: '#01bcce' }} />
-                  Pengaturan Teks Catatan SLA Tahun {slaSelectedYear}
+                  Pengaturan Judul Kategori & Catatan SLA Tahun {slaSelectedYear}
                 </h2>
                 <p className="font-nav text-xs text-gray-500 mt-0.5">
-                  Atur teks penjelasan header dan keterangan catatan di bawah tabel Capaian SLA.
+                  Atur teks penjelasan header serta judul section/kategori dan isi catatan keterangan masing-masing kategori SLA.
                 </p>
               </div>
             </div>
 
-            <div className="space-y-5 font-nav">
+            <div className="space-y-6 font-nav">
               {/* 1. Header Penjelasan Singkat SLA */}
-              <div>
+              <div className="p-4 rounded-2xl bg-[#f8fafc] border border-gray-200">
                 <label className="block text-xs font-black uppercase text-gray-700 mb-1.5">
-                  Header Penjelasan Singkat SLA (Muncul di Box Paling Atas)
+                  Header Penjelasan Singkat SLA (Muncul di Box Paling Atas Halaman Publik)
                 </label>
                 <textarea
                   rows={2}
                   value={slaHeaderText}
                   onChange={(e) => setSlaHeaderText(e.target.value)}
-                  className="w-full p-3 bg-[#f8fafc] border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 outline-none focus:border-[#01bcce] transition-colors resize-y"
+                  className="w-full p-3 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 outline-none focus:border-[#01bcce] transition-colors resize-y"
                   placeholder="Masukkan penjelasan singkat SLA..."
                 />
               </div>
 
-              {/* 2. Judul Tabel Capaian */}
-              <div>
-                <label className="block text-xs font-black uppercase text-gray-700 mb-1.5">
-                  Judul Tabel (Default: Capaian)
-                </label>
-                <input
-                  type="text"
-                  value={slaJudulTabel}
-                  onChange={(e) => setSlaJudulTabel(e.target.value)}
-                  className="w-full p-3 bg-[#f8fafc] border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 font-bold outline-none focus:border-[#01bcce] transition-colors"
-                  placeholder="Capaian"
-                />
-              </div>
+              {/* 2 KOTAK SECTION: SLA DOKUMEN INTERNAL & SLA DOKUMEN EKSTERNAL */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Section 1: SLA Dokumen Internal */}
+                <div className="p-4 rounded-2xl bg-[#eef9fa]/50 border border-[#01bcce]/30 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                    <span className="w-3 h-3 rounded-full bg-[#01bcce]" />
+                    <span className="font-nav font-bold text-xs text-[#00282b] uppercase tracking-wider">
+                      Section 1: SLA Dokumen Internal
+                    </span>
+                  </div>
+                  <div>
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Judul Section 1:
+                    </label>
+                    <input
+                      type="text"
+                      value={slaJudulInternal}
+                      onChange={(e) => setSlaJudulInternal(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-[#01bcce] transition-colors"
+                      placeholder="SLA Dokumen Internal"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Catatan Keterangan Section 1 (Internal):
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={slaKetInternal}
+                      onChange={(e) => setSlaKetInternal(e.target.value)}
+                      className="w-full flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 outline-none focus:border-[#01bcce] transition-colors resize-y leading-relaxed"
+                      placeholder="Masukkan catatan SLA dokumen internal..."
+                    />
+                  </div>
+                </div>
 
-              {/* 3. Text Box Catatan di Bawah Tabel Capaian */}
-              <div>
-                <label className="block text-xs font-black uppercase text-gray-700 mb-1.5">
-                  Text Box Catatan di Bawah Tabel Capaian
-                </label>
-                <textarea
-                  rows={3}
-                  value={slaKetCapaian}
-                  onChange={(e) => setSlaKetCapaian(e.target.value)}
-                  className="w-full p-3 bg-[#f8fafc] border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 outline-none focus:border-[#01bcce] transition-colors resize-y"
-                  placeholder="Masukkan catatan capaian SLA..."
-                />
+                {/* Section 2: SLA Dokumen Eksternal */}
+                <div className="p-4 rounded-2xl bg-[#fbfcfa] border border-[#268484]/30 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                    <span className="w-3 h-3 rounded-full bg-[#268484]" />
+                    <span className="font-nav font-bold text-xs text-[#00282b] uppercase tracking-wider">
+                      Section 2: SLA Dokumen Eksternal
+                    </span>
+                  </div>
+                  <div>
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Judul Section 2:
+                    </label>
+                    <input
+                      type="text"
+                      value={slaJudulEksternal}
+                      onChange={(e) => setSlaJudulEksternal(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-[#268484] transition-colors"
+                      placeholder="SLA Dokumen Eksternal"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Catatan Keterangan Section 2 (Eksternal):
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={slaKetEksternal}
+                      onChange={(e) => setSlaKetEksternal(e.target.value)}
+                      className="w-full flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 outline-none focus:border-[#268484] transition-colors resize-y leading-relaxed"
+                      placeholder="Masukkan catatan SLA dokumen eksternal..."
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Tombol Simpan Teks Catatan SLA */}
@@ -2252,7 +2764,7 @@ export default function AdminAkuntansiVerifikasi() {
                   style={{ background: '#00282b' }}
                 >
                   <Save size={15} />
-                  {loading ? 'Menyimpan...' : `Simpan Teks Catatan SLA ${slaSelectedYear}`}
+                  {loading ? 'Menyimpan...' : `Simpan Judul & Teks Catatan SLA ${slaSelectedYear}`}
                 </button>
               </div>
             </div>
@@ -2260,15 +2772,37 @@ export default function AdminAkuntansiVerifikasi() {
 
           {/* CARD 3: TABEL REKAPITULASI DATA SLA TAHUN TERPILIH */}
           <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-100">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-gray-100">
               <div>
                 <h2 className="font-nav font-bold text-gray-800 text-lg flex items-center gap-2">
                   <Calendar size={20} style={{ color: '#01bcce' }} />
-                  Data Capaian SLA Tahun {slaSelectedYear}
+                  Data {getActiveSlaTitle(slaCategory)} Tahun {slaSelectedYear}
                 </h2>
                 <p className="font-nav text-xs text-gray-500 mt-0.5">
-                  Ringkasan seluruh 12 bulan capaian SLA. Bulan yang diisi akan otomatis tampil di halaman publik.
+                  Ringkasan seluruh 12 bulan {getActiveSlaTitle(slaCategory)}. Bulan yang diisi akan otomatis tampil di halaman publik.
                 </p>
+              </div>
+
+              {/* Category tabs for viewing summary */}
+              <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl border border-gray-200">
+                {[
+                  { id: 'capaian', label: 'SLA Verifikasi' },
+                  { id: 'pengambilan', label: 'SLA Pengambilan' },
+                  { id: 'pengembalian', label: 'SLA Pengembalian' },
+                ].map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => handleSwitchSlaCategory(cat.id as 'capaian' | 'pengambilan' | 'pengembalian')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-nav font-bold transition-all cursor-pointer ${
+                      slaCategory === cat.id
+                        ? 'bg-[#00282b] text-[#d0db41] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -2297,7 +2831,7 @@ export default function AdminAkuntansiVerifikasi() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {slaMonthsData.map((m, idx) => {
+                  {(slaCategory === 'pengambilan' ? slaMonthsPengambilan : slaCategory === 'pengembalian' ? slaMonthsPengembalian : slaMonthsData).map((m, idx) => {
                     const isFilled = m.has_data || m.internal > 0 || m.eksternal > 0 || m.keseluruhan > 0
                     return (
                       <tr key={m.bulan} className="rowHover" style={{ background: idx % 2 === 0 ? '#fff' : '#fafbfc' }}>
@@ -2357,16 +2891,16 @@ export default function AdminAkuntansiVerifikasi() {
       {/* ================= TAB 3: BA TUTUP TAGIHAN ================= */}
       {activeAdminTab === 'ba_tutup_tagihan' && (
         <div className="space-y-6">
-          {/* ================= CARD 1: FORM INPUT BA TUTUP TAGIHAN PER BULAN ================= */}
+          {/* ================= CARD 1: PENGATURAN JUDUL & CATATAN 3 SECTION BA ================= */}
           <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-100">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
               <div>
                 <h2 className="font-nav font-bold text-gray-800 text-lg flex items-center gap-2">
-                  <FileCheck size={20} style={{ color: '#01bcce' }} />
-                  Form Input BA Tutup Tagihan
+                  <FileText size={20} style={{ color: '#01bcce' }} />
+                  Pengaturan Judul & Catatan 3 Section BA Tutup Tagihan (Tahun {baSelectedYear})
                 </h2>
                 <p className="font-nav text-xs text-gray-500 mt-0.5">
-                  Pilih Tahun dan Bulan yang ingin diisi/diedit, lalu masukkan rincian data penyedia dan status BA.
+                  Atur judul section dan teks catatan penjelasan untuk ke-3 section BA Tutup Tagihan agar dapat disesuaikan secara dinamis.
                 </p>
               </div>
 
@@ -2381,6 +2915,387 @@ export default function AdminAkuntansiVerifikasi() {
                     <AlertTriangle size={13} /> Data BA Tahun {baSelectedYear} Belum Tersimpan (Kosong)
                   </span>
                 )}
+              </div>
+            </div>
+
+            <div className="space-y-5 font-nav">
+              {/* Header Penjelasan Singkat (Muncul di Banner Paling Atas Halaman Publik) */}
+              <div>
+                <label className="block text-xs font-black uppercase text-gray-700 mb-1.5">
+                  Banner Penjelasan Singkat BA Tutup Tagihan (Muncul di Kotak Header Paling Atas)
+                </label>
+                <textarea
+                  rows={2}
+                  value={baHeaderText}
+                  onChange={(e) => setBaHeaderText(e.target.value)}
+                  className="w-full p-3 bg-[#f8fafc] border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 outline-none focus:border-[#01bcce] transition-colors resize-y"
+                  placeholder="Masukkan penjelasan singkat BA Tutup Tagihan..."
+                />
+              </div>
+
+              {/* 3 Section Judul & Catatan Box */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* SECTION 1: JENIS TAGIHAN */}
+                <div className="p-4 rounded-2xl bg-[#eef9fa]/50 border border-[#01bcce]/30 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                    <span className="w-3 h-3 rounded-full bg-[#01bcce]" />
+                    <span className="font-nav font-bold text-xs text-[#00282b] uppercase tracking-wider">
+                      Section 1: Jenis Tagihan
+                    </span>
+                  </div>
+                  <div>
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Judul Section 1 (Bisa Diedit):
+                    </label>
+                    <input
+                      type="text"
+                      value={baJudulJenisTagihan}
+                      onChange={(e) => setBaJudulJenisTagihan(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-[#01bcce] transition-colors"
+                      placeholder="Jenis Tagihan"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Catatan Keterangan Section 1:
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={baKetJenisTagihan}
+                      onChange={(e) => setBaKetJenisTagihan(e.target.value)}
+                      className="w-full flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 outline-none focus:border-[#01bcce] transition-colors resize-y leading-relaxed"
+                      placeholder="Masukkan catatan jenis tagihan..."
+                    />
+                  </div>
+                </div>
+
+                {/* SECTION 2: BA TUTUP TAGIHAN BERDASARKAN PROSES */}
+                <div className="p-4 rounded-2xl bg-[#f0fdf4]/50 border border-[#268484]/30 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                    <span className="w-3 h-3 rounded-full bg-[#268484]" />
+                    <span className="font-nav font-bold text-xs text-[#00282b] uppercase tracking-wider">
+                      Section 2: Berdasarkan Proses
+                    </span>
+                  </div>
+                  <div>
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Judul Section 2 (Bisa Diedit):
+                    </label>
+                    <input
+                      type="text"
+                      value={baJudulTabel}
+                      onChange={(e) => setBaJudulTabel(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-[#268484] transition-colors"
+                      placeholder="BA Tutup Tagihan Berdasarkan Proses"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Catatan Keterangan Section 2:
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={baKet}
+                      onChange={(e) => setBaKet(e.target.value)}
+                      className="w-full flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 outline-none focus:border-[#268484] transition-colors resize-y leading-relaxed"
+                      placeholder="Masukkan catatan BA Tutup Tagihan Berdasarkan Proses..."
+                    />
+                  </div>
+                </div>
+
+                {/* SECTION 3: NOMINAL BA TUTUP TAGIHAN */}
+                <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#00282b]/25 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                    <span className="w-3 h-3 rounded-full bg-[#d0db41]" />
+                    <span className="font-nav font-bold text-xs text-[#00282b] uppercase tracking-wider">
+                      Section 3: Berdasarkan Nominal (Rp)
+                    </span>
+                  </div>
+                  <div>
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Judul Section 3 (Bisa Diedit):
+                    </label>
+                    <input
+                      type="text"
+                      value={baJudulNominal}
+                      onChange={(e) => setBaJudulNominal(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-[#00282b] transition-colors"
+                      placeholder="BA Tutup Tagihan Berdasarkan Nominal (Rp)"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <label className="font-nav text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                      Catatan Keterangan Section 3:
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={baKetNominal}
+                      onChange={(e) => setBaKetNominal(e.target.value)}
+                      className="w-full flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 outline-none focus:border-[#00282b] transition-colors resize-y leading-relaxed"
+                      placeholder="Masukkan catatan nominal BA Tutup Tagihan..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tombol Simpan Teks Catatan & Judul BA */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveBaTexts}
+                  disabled={loading}
+                  className="px-6 py-2.5 rounded-xl font-bold text-xs text-white flex items-center gap-2 transition-all shadow-sm hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                  style={{ background: '#00282b' }}
+                >
+                  <Save size={15} />
+                  {loading ? 'Menyimpan...' : `Simpan Judul & Teks Catatan BA Tahun ${baSelectedYear}`}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ================= CARD 2: KELOLA DAFTAR JENIS TAGIHAN (SECTION 1) ================= */}
+          <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-100">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-nav font-bold text-gray-800 text-lg flex items-center gap-2">
+                  <BarChart3 size={20} style={{ color: '#01bcce' }} />
+                  Kelola Daftar {baJudulJenisTagihan || 'Jenis Tagihan'} (Section 1)
+                </h2>
+                <p className="font-nav text-xs text-gray-500 mt-0.5">
+                  Tambah, ubah, atau hapus item jenis tagihan beserta Jumlah Penyedia dan Sudah Terbit BA untuk tahun {baSelectedYear}. Data ini otomatis tampil pada tabel dan column chart Jenis Tagihan.
+                </p>
+              </div>
+            </div>
+
+            {/* Form Tambah / Edit Item Jenis Tagihan */}
+            <div className="bg-[#f8fafc] rounded-2xl p-4 sm:p-5 border border-gray-200 mb-6 font-nav">
+              <h3 className="text-xs font-black uppercase text-[#00282b] mb-3">
+                {editingJenisId ? '✏️ Ubah Item Jenis Tagihan' : '➕ Tambah Item Jenis Tagihan Baru'}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div className="sm:col-span-5">
+                  <label className="block text-[11px] font-bold text-gray-600 uppercase mb-1">
+                    Nama Jenis Tagihan:
+                  </label>
+                  <input
+                    type="text"
+                    value={newJenisNama}
+                    onChange={(e) => setNewJenisNama(e.target.value)}
+                    placeholder="Contoh: Obat & Farmasi, Alat Kesehatan..."
+                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 outline-none focus:border-[#01bcce] transition-colors"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-bold text-gray-600 uppercase mb-1">
+                    Jumlah Penyedia:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newJenisJumlahPenyedia}
+                    onChange={(e) => setNewJenisJumlahPenyedia(e.target.value)}
+                    placeholder="Contoh: 450"
+                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-black text-[#268484] outline-none focus:border-[#01bcce] transition-colors text-center"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-gray-600 uppercase mb-1">
+                    Sudah Terbit BA:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newJenisSudahTerbitBa}
+                    onChange={(e) => setNewJenisSudahTerbitBa(e.target.value)}
+                    placeholder="Contoh: 380"
+                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-black text-[#566000] outline-none focus:border-[#01bcce] transition-colors text-center"
+                  />
+                </div>
+                <div className="sm:col-span-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddOrUpdateJenisItem}
+                    className="flex-1 py-2.5 px-3 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-opacity hover:opacity-90"
+                    style={{ background: '#00282b' }}
+                  >
+                    {editingJenisId ? <Check size={14} /> : <Plus size={14} />}
+                    <span>{editingJenisId ? 'Perbarui' : 'Tambah'}</span>
+                  </button>
+                  {editingJenisId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEditJenis}
+                      className="py-2.5 px-3 rounded-xl font-bold text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer"
+                      title="Batal edit"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Tabel List Jenis Tagihan */}
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white mb-4">
+              <table className="w-full text-left font-nav text-xs border-collapse">
+                <thead style={{ background: '#008080' }}>
+                  <tr>
+                    <th style={{ padding: '10px 14px', textAlign: 'center', width: 50, borderRight: '1px solid rgba(255,255,255,0.2)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                      No
+                    </th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', borderRight: '1px solid rgba(255,255,255,0.2)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                      Jenis Tagihan
+                    </th>
+                    <th style={{ padding: '10px 16px', textAlign: 'center', width: 140, borderRight: '1px solid rgba(255,255,255,0.2)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                      Jumlah Penyedia
+                    </th>
+                    <th style={{ padding: '10px 16px', textAlign: 'center', width: 140, borderRight: '1px solid rgba(255,255,255,0.2)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                      Sudah Terbit BA
+                    </th>
+                    <th style={{ padding: '10px 14px', textAlign: 'center', width: 90, fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {baJenisTagihanItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-6 text-center text-gray-400 font-bold text-xs">
+                        Belum ada item jenis tagihan. Gunakan form di atas untuk menambahkan item.
+                      </td>
+                    </tr>
+                  ) : (
+                    (() => {
+                      const totalPenyediaSum = baJenisTagihanItems.reduce((acc, it) => acc + (it.jumlah_penyedia ?? it.jumlah ?? 0), 0)
+                      const totalTerbitSum = baJenisTagihanItems.reduce((acc, it) => acc + (it.sudah_terbit_ba ?? 0), 0)
+                      return (
+                        <>
+                          {baJenisTagihanItems.map((item, idx) => {
+                            const penyediaVal = item.jumlah_penyedia ?? item.jumlah ?? 0
+                            const terbitVal = item.sudah_terbit_ba ?? 0
+                            return (
+                              <tr key={item.id || idx} className="hover:bg-gray-50/70" style={{ background: idx % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                                <td style={{ padding: '8px 14px', textAlign: 'center', borderRight: '1px solid #eee', fontWeight: 800, color: '#64748b' }}>
+                                  {idx + 1}
+                                </td>
+                                <td style={{ padding: '8px 16px', textAlign: 'left', borderRight: '1px solid #eee', fontWeight: 800, color: '#00282b' }}>
+                                  {item.jenis}
+                                </td>
+                                <td style={{ padding: '8px 16px', textAlign: 'center', borderRight: '1px solid #eee', fontWeight: 800, color: '#268484' }}>
+                                  {penyediaVal.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '8px 16px', textAlign: 'center', borderRight: '1px solid #eee', fontWeight: 800, color: '#566000' }}>
+                                  {terbitVal.toLocaleString('id-ID')}
+                                </td>
+                                <td style={{ padding: '8px 14px', textAlign: 'center' }}>
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditJenisItem(item)}
+                                      className="p-1.5 rounded-lg text-[#01bcce] hover:bg-cyan-50 transition-colors cursor-pointer"
+                                      title="Edit item ini"
+                                    >
+                                      <Edit3 size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteJenisItem(item.id)}
+                                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                                      title="Hapus item ini"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                          {/* Row Total */}
+                          <tr style={{ background: '#f8fafc', borderTop: '2px solid #00282b', fontWeight: 800 }}>
+                            <td colSpan={2} style={{ padding: '9px 16px', textAlign: 'left', borderRight: '1px solid #eee', color: '#00282b', fontWeight: 900, textTransform: 'uppercase', fontSize: 11 }}>
+                              Total Tagihan
+                            </td>
+                            <td style={{ padding: '9px 16px', textAlign: 'center', borderRight: '1px solid #eee', color: '#268484', fontWeight: 900, fontSize: 13 }}>
+                              {totalPenyediaSum.toLocaleString('id-ID')}
+                            </td>
+                            <td style={{ padding: '9px 16px', textAlign: 'center', borderRight: '1px solid #eee', color: '#566000', fontWeight: 900, fontSize: 13 }}>
+                              {totalTerbitSum.toLocaleString('id-ID')}
+                            </td>
+                            <td />
+                          </tr>
+                        </>
+                      )
+                    })()
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Tombol Simpan Daftar Jenis Tagihan */}
+            <div className="pt-2 flex items-center justify-end gap-3">
+              {baJenisTagihanItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAllJenisTagihan}
+                  disabled={loading}
+                  className="px-4 py-2.5 rounded-xl font-bold text-xs text-red-600 bg-red-50 hover:bg-red-100 flex items-center gap-1.5 transition-all border border-red-200 cursor-pointer disabled:opacity-50"
+                  title="Hapus semua item jenis tagihan"
+                >
+                  <Trash2 size={14} />
+                  Kosongkan Semua Item
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSaveJenisTagihanList}
+                disabled={loading}
+                className="px-6 py-2.5 rounded-xl font-bold text-xs text-white flex items-center gap-2 transition-all shadow-sm hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                style={{ background: '#00282b' }}
+              >
+                <Save size={15} />
+                {loading ? 'Menyimpan...' : `Simpan Daftar Jenis Tagihan Tahun ${baSelectedYear}`}
+              </button>
+            </div>
+          </div>
+
+          {/* ================= CARD 3: FORM INPUT DATA 12 BULAN (SECTION 2 & 3) ================= */}
+          <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-100">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-nav font-bold text-gray-800 text-lg flex items-center gap-2">
+                  <FileCheck size={20} style={{ color: '#01bcce' }} />
+                  Form Input Data 12 Bulan ({getActiveBaTitle(baCategory)})
+                </h2>
+                <p className="font-nav text-xs text-gray-500 mt-0.5">
+                  Pilih kategori BA yang ingin diinput, lalu masukkan rincian data per bulan.
+                </p>
+              </div>
+
+              {/* Kategori Switcher: Penyedia vs Nominal (Transaksi) */}
+              <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchBaCategory('penyedia')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-nav font-bold transition-all cursor-pointer ${
+                    baCategory === 'penyedia'
+                      ? 'bg-[#00282b] text-[#d0db41] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Section 2: {baJudulTabel || 'BA Tutup Tagihan'} (Penyedia)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchBaCategory('nominal')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-nav font-bold transition-all cursor-pointer ${
+                    baCategory === 'nominal'
+                      ? 'bg-[#00282b] text-[#d0db41] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Section 3: {baJudulNominal || 'Nominal BA Tutup Tagihan'} (Transaksi)
+                </button>
               </div>
             </div>
 
@@ -2440,18 +3355,18 @@ export default function AdminAkuntansiVerifikasi() {
 
               {/* Status Bulan Ini */}
               <div className="text-xs font-nav text-gray-500 flex items-center gap-2">
-                <span>Mengedit: <strong className="text-[#00282b]">{baEditBulan} {baSelectedYear}</strong></span>
+                <span>Mengedit: <strong className="text-[#00282b]">{getActiveBaTitle(baCategory)} — {baEditBulan} {baSelectedYear}</strong></span>
               </div>
             </div>
 
-            {/* GRID INPUT DATA BA TUTUP TAGIHAN (5 STATUS) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-              {/* 1. Total Penyedia */}
+            {/* GRID INPUT DATA (5 STATUS) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 font-nav">
+              {/* 1. Total Penyedia / Total Transaksi */}
               <div className="bg-[#f8fafc] border-2 border-slate-200 rounded-2xl p-4 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="font-nav font-black text-[11px] uppercase tracking-wider text-[#00282b]">
-                      Total Penyedia
+                      {baCategory === 'nominal' ? 'Total Nilai' : 'Total Penyedia'}
                     </label>
                   </div>
                   <input
@@ -2587,104 +3502,55 @@ export default function AdminAkuntansiVerifikasi() {
                 style={{ background: '#00282b' }}
               >
                 <Save size={15} />
-                {loading ? 'Menyimpan...' : `Simpan Data Bulan ${baEditBulan} ${baSelectedYear}`}
+                {loading ? 'Menyimpan...' : `Simpan Data ${getActiveBaTitle(baCategory)} Bulan ${baEditBulan} ${baSelectedYear}`}
               </button>
             </div>
           </div>
 
-          {/* ================= CARD 2: FORM HEADER & CATATAN PENJELASAN BA ================= */}
-          <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-100">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
-              <div>
-                <h2 className="font-nav font-bold text-gray-800 text-lg flex items-center gap-2">
-                  <FileText size={20} style={{ color: '#01bcce' }} />
-                  Header & Catatan Penjelasan BA Tutup Tagihan
-                </h2>
-                <p className="font-nav text-xs text-gray-500 mt-0.5">
-                  Atur teks penjelasan header dan catatan ringkas yang tampil di sebelah tabel BA Tutup Tagihan.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-5 font-nav">
-              {/* 1. Header Penjelasan Singkat */}
-              <div>
-                <label className="block text-xs font-black uppercase text-gray-700 mb-1.5">
-                  Header Penjelasan Singkat BA Tutup Tagihan (Muncul di Box Paling Atas)
-                </label>
-                <textarea
-                  rows={2}
-                  value={baHeaderText}
-                  onChange={(e) => setBaHeaderText(e.target.value)}
-                  className="w-full p-3 bg-[#f8fafc] border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 outline-none focus:border-[#01bcce] transition-colors resize-y"
-                  placeholder="Masukkan penjelasan singkat BA Tutup Tagihan..."
-                />
-              </div>
-
-              {/* 2. Judul Tabel */}
-              <div>
-                <label className="block text-xs font-black uppercase text-gray-700 mb-1.5">
-                  Judul Tabel (Default: BA Tutup Tagihan)
-                </label>
-                <input
-                  type="text"
-                  value={baJudulTabel}
-                  onChange={(e) => setBaJudulTabel(e.target.value)}
-                  className="w-full p-3 bg-[#f8fafc] border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 font-bold outline-none focus:border-[#01bcce] transition-colors"
-                  placeholder="BA Tutup Tagihan"
-                />
-              </div>
-
-              {/* 3. Text Box Catatan di Sebelah Tabel */}
-              <div>
-                <label className="block text-xs font-black uppercase text-gray-700 mb-1.5">
-                  Text Box Catatan di Sebelah Tabel BA Tutup Tagihan
-                </label>
-                <textarea
-                  rows={3}
-                  value={baKet}
-                  onChange={(e) => setBaKet(e.target.value)}
-                  className="w-full p-3 bg-[#f8fafc] border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 outline-none focus:border-[#01bcce] transition-colors resize-y"
-                  placeholder="Masukkan catatan BA Tutup Tagihan..."
-                />
-              </div>
-
-              {/* Tombol Simpan Teks Catatan BA */}
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSaveBaTexts}
-                  disabled={loading}
-                  className="px-6 py-2.5 rounded-xl font-bold text-xs text-white flex items-center gap-2 transition-all shadow-sm hover:opacity-90 disabled:opacity-50 cursor-pointer"
-                  style={{ background: '#00282b' }}
-                >
-                  <Save size={15} />
-                  {loading ? 'Menyimpan...' : `Simpan Teks Catatan BA ${baSelectedYear}`}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* ================= CARD 3: TABEL REKAPITULASI DATA BA TAHUN TERPILIH ================= */}
+          {/* ================= CARD 4: TABEL REKAPITULASI DATA 12 BULAN ================= */}
           <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-100">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
               <div>
                 <h2 className="font-nav font-bold text-gray-800 text-lg flex items-center gap-2">
                   <Calendar size={20} style={{ color: '#01bcce' }} />
-                  Data BA Tutup Tagihan Tahun {baSelectedYear}
+                  Data {getActiveBaTitle(baCategory)} Tahun {baSelectedYear}
                 </h2>
                 <p className="font-nav text-xs text-gray-500 mt-0.5">
-                  Ringkasan seluruh 12 bulan data BA Tutup Tagihan. Bulan yang diisi akan otomatis tampil di halaman publik.
+                  Ringkasan seluruh 12 bulan data {getActiveBaTitle(baCategory)}. Bulan yang diisi akan otomatis tampil pada grafik dan tabel halaman publik.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleResetAllBaMonths}
-                className="px-3.5 py-1.5 text-xs font-nav font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer border border-red-200"
-              >
-                <Trash2 size={13} /> Reset Semua 12 Bulan (0)
-              </button>
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Category Switcher in Table Header */}
+                <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchBaCategory('penyedia')}
+                    className={`px-3 py-1 text-xs font-nav font-bold rounded-lg transition-all cursor-pointer ${
+                      baCategory === 'penyedia' ? 'bg-[#00282b] text-[#d0db41]' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Penyedia
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchBaCategory('nominal')}
+                    className={`px-3 py-1 text-xs font-nav font-bold rounded-lg transition-all cursor-pointer ${
+                      baCategory === 'nominal' ? 'bg-[#00282b] text-[#d0db41]' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Nominal (Nilai)
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleResetAllBaMonths}
+                  className="px-3.5 py-1.5 text-xs font-nav font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer border border-red-200"
+                >
+                  <Trash2 size={13} /> Reset Semua 12 Bulan (0)
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-xs bg-white">
@@ -2695,7 +3561,7 @@ export default function AdminAkuntansiVerifikasi() {
                       Periode
                     </th>
                     <th style={{ padding: '12px 12px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
-                      Total Penyedia
+                      {baCategory === 'nominal' ? 'Total Nilai' : 'Total Penyedia'}
                     </th>
                     <th style={{ padding: '12px 12px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.2)', borderBottom: '2px solid rgba(0,0,0,0.1)', fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
                       Belum Dikonfirmasi
@@ -2718,7 +3584,7 @@ export default function AdminAkuntansiVerifikasi() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {baMonthsData.map((m, idx) => {
+                  {(baCategory === 'nominal' ? baMonthsNominal : baMonthsData).map((m, idx) => {
                     const isFilled = m.has_data || m.total_penyedia > 0 || m.belum_dikonfirmasi > 0 || m.proses_penagihan > 0 || m.proses_pembuatan_ba > 0 || m.sudah_terbit_ba > 0
                     return (
                       <tr key={m.bulan} className="rowHover" style={{ background: idx % 2 === 0 ? '#fff' : '#fafbfc' }}>

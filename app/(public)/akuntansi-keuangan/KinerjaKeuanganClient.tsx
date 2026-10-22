@@ -716,17 +716,22 @@ export default function KinerjaKeuanganClient({ kpiTerbaru, semuaKpi, financialD
             }}>
 
               {/* TABS & FILTERS */}
-              <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center mb-3 border-b border-gray-100 pb-3">
-                <div className="flex flex-wrap gap-2">
-                  {TABS.map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setKategori(t)}
-                      className={`px-4 py-2 rounded-lg font-nav text-sm font-bold transition-all ${kategori === t ? 'bg-[#00282b] text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+              <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-end mb-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h2 className="font-nav text-lg sm:text-xl font-bold text-[#00282b] mb-2.5 tracking-tight">
+                    Laporan Keuangan SAK
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {TABS.map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setKategori(t)}
+                        className={`px-4 py-2 rounded-lg font-nav text-sm font-bold transition-all ${kategori === t ? 'bg-[#00282b] text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-xl border border-gray-100">

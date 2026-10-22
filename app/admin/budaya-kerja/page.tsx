@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
 import {
   Upload,
   Trash2,
@@ -150,6 +151,10 @@ export default function AdminBudayaKerjaPage() {
     try {
       const publicUrl = await uploadImageFile(file)
       if (publicUrl) {
+        // Hapus gambar lama dari storage jika sebelumnya sudah ada
+        if (gambarUrl && gambarUrl !== publicUrl) {
+          await deleteFileFromStorage(supabase, gambarUrl)
+        }
         setGambarUrl(publicUrl)
         showFeedback('success', 'Gambar utama berhasil diunggah!')
       }
@@ -158,6 +163,15 @@ export default function AdminBudayaKerjaPage() {
     } finally {
       setUploadingImage(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  async function handleRemoveImage() {
+    if (!confirm('Hapus gambar utama ini?')) return
+    if (gambarUrl) {
+      await deleteFileFromStorage(supabase, gambarUrl)
+      setGambarUrl('')
+      showFeedback('success', 'Gambar utama berhasil dihapus dari penyimpanan!')
     }
   }
 
@@ -358,7 +372,7 @@ export default function AdminBudayaKerjaPage() {
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                     <button
                       type="button"
-                      onClick={() => setGambarUrl('')}
+                      onClick={handleRemoveImage}
                       className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg transition-all"
                     >
                       <Trash2 size={14} /> Hapus Gambar

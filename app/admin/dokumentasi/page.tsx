@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteFileFromStorage, deleteFilesFromStorage } from '@/lib/supabase/storage-helper'
 import { Upload, Trash2, Plus, ImageIcon, Video, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
@@ -87,6 +88,8 @@ export default function AdminDokumentasiPage() {
   async function handleDeleteAlbum(albumId: string) {
     if (!confirm('Hapus semua foto dalam kegiatan ini?')) return
     if (albumId) {
+      const itemsToDelete = data.filter(item => item.album_id === albumId)
+      await deleteFilesFromStorage(supabase, itemsToDelete.map(i => i.file_url))
       await supabase.from('dokumentasi').delete().eq('album_id', albumId)
     }
     loadData()
@@ -94,6 +97,10 @@ export default function AdminDokumentasiPage() {
 
   async function handleDeleteSingle(id: string) {
     if (!confirm('Hapus foto ini?')) return
+    const item = data.find(i => i.id === id)
+    if (item?.file_url) {
+      await deleteFileFromStorage(supabase, item.file_url)
+    }
     await supabase.from('dokumentasi').delete().eq('id', id)
     loadData()
   }

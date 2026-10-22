@@ -77,7 +77,7 @@ export default function AgendaPage() {
 
               {/* Calendar iframe - mode=WEEK */}
               <iframe
-                src="https://calendar.google.com/calendar/embed?src=sendimaulana1199%40gmail.com&ctz=Asia%2FJakarta&mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&showTz=1"
+                src="https://calendar.google.com/calendar/embed?src=akuntansirscm%40gmail.com&ctz=Asia%2FJakarta&mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&showTz=1"
                 title="Agenda Kegiatan Tim Akuntansi RSCM"
                 frameBorder="0"
                 scrolling="no"
@@ -102,7 +102,7 @@ export default function AgendaPage() {
                   Jika kalender tidak tampil, pastikan Anda terhubung ke internet dan kalender ini dibagikan secara publik.
                   Anda juga dapat mengakses kalender secara langsung di{' '}
                   <a
-                    href="https://calendar.google.com"
+                    href="https://calendar.google.com/calendar/u/2?cid=YWt1bnRhbnNpcnNjbUBnbWFpbC5jb20"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-bold"
