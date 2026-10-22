@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import React from 'react'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: 'Our Teams | RSCM Akuntansi',
   description: 'Kenali anggota Tim Kerja Akuntansi RSCM',
