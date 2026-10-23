@@ -8,11 +8,11 @@ export default function CalendarSection() {
 
   return (
     <section className="relative" style={{ background: '#00282b', paddingTop: '65px', paddingBottom: '90px' }}>
-      <div className="w-full max-w-[1200px] mx-auto" style={{ paddingLeft: '5%', paddingRight: '5%' }}>
-        <div className="flex flex-col lg:flex-row items-center justify-between" style={{ gap: '48px' }}>
+      <div className="w-full max-w-[1440px] mx-auto" style={{ paddingLeft: '20px', paddingRight: '36px' }}>
+        <div className="flex flex-col lg:flex-row items-center justify-between" style={{ gap: '40px' }}>
           
           {/* Left: Calendar Embed */}
-          <div className="w-full lg:w-[58%]">
+          <div className="w-full lg:w-[62%]">
             <div className="rounded-2xl overflow-hidden shadow-2xl bg-[#001f22]"
                  style={{ border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}>
               
@@ -99,7 +99,7 @@ export default function CalendarSection() {
           </div>
 
           {/* Right: Text Content */}
-          <div className="w-full lg:w-[42%] flex flex-col items-start text-left">
+          <div className="w-full lg:w-[36%] flex flex-col items-start text-left">
             <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full font-bold uppercase tracking-widest mb-4 shadow-lg"
                  style={{ background: 'rgba(208,219,65,0.15)', border: '1px solid rgba(208,219,65,0.3)', color: '#d0db41', fontSize: '11px', fontFamily: '"Nunito", sans-serif' }}>
               <span className="w-2 h-2 rounded-full" style={{ background: '#d0db41', boxShadow: '0 0 10px rgba(208,219,65,0.8)' }} />
