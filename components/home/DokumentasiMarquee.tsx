@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { Play } from 'lucide-react'
+import { parseJudulCaption } from '@/lib/dokumentasi-helper'
 
 interface Item {
   id: string
@@ -75,29 +76,36 @@ export default function DokumentasiMarquee({ items }: { items: Item[] }) {
 }
 
 function MarqueeItem({ item }: { item: Item }) {
+  const { judul, caption } = parseJudulCaption(item.caption)
+
   return (
     <div className="relative w-72 h-48 md:w-80 md:h-56 rounded-3xl overflow-hidden shadow-lg flex-shrink-0 group/card cursor-pointer">
       <Link href="/dokumentasi">
         <div className="absolute inset-0 bg-[#00282b]">
           {item.file_type === 'foto' ? (
-            <img src={item.file_url} alt={item.caption || 'Dokumentasi'} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" />
+            <img src={item.file_url} alt={judul} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" />
           ) : (
             <video src={item.file_url} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover/card:scale-110" />
           )}
         </div>
         
         {/* Overlay gradient & caption on hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#00282b]/95 via-[#00282b]/40 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#00282b]/95 via-[#00282b]/50 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-5">
           {item.file_type === 'video' && (
              <div className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
                <Play size={18} color="#fff" fill="#fff" className="ml-1" />
              </div>
           )}
-          <p className="text-white font-extrabold line-clamp-2 transform translate-y-4 group-hover/card:translate-y-0 transition-transform duration-500" style={{ fontFamily: '"Nunito", sans-serif' }}>
-            {item.caption || 'Dokumentasi Kegiatan'}
+          <p className="text-white font-extrabold line-clamp-2 transform translate-y-4 group-hover/card:translate-y-0 transition-transform duration-500 text-sm leading-snug" style={{ fontFamily: '"Nunito", sans-serif' }}>
+            {judul}
           </p>
+          {caption && (
+            <p className="text-white/80 text-xs line-clamp-1 mt-1 transform translate-y-4 group-hover/card:translate-y-0 transition-transform duration-500 delay-50" style={{ fontFamily: '"Nunito", sans-serif' }}>
+              {caption}
+            </p>
+          )}
           {item.tanggal && (
-            <span className="text-[#d0db41] text-xs font-bold mt-2 tracking-wider transform translate-y-4 group-hover/card:translate-y-0 transition-transform duration-500 delay-75" style={{ fontFamily: '"Nunito", sans-serif' }}>
+            <span className="text-[#d0db41] text-[11px] font-bold mt-2 tracking-wider transform translate-y-4 group-hover/card:translate-y-0 transition-transform duration-500 delay-75" style={{ fontFamily: '"Nunito", sans-serif' }}>
               {new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
           )}

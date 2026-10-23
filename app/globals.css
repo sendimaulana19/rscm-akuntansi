@@ -21,6 +21,18 @@
 /* ── Base Resets ── */
 html { scroll-behavior: smooth; }
 
+*, *::before, *::after {
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+  -moz-hyphens: none !important;
+  -ms-hyphens: none !important;
+}
+
+p, span, div, h1, h2, h3, h4, h5, h6, a, article, section, blockquote, label {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
 body {
   font-family: var(--font-bonum);
   color: #0d1b1e;

@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { Camera, Play, Images, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
+import { parseJudulCaption } from '@/lib/dokumentasi-helper'
 
 interface Item {
   id: string
@@ -85,6 +86,7 @@ function AlbumCard({ album, onClick }: { album: Album; onClick: () => void }) {
   const p1 = album.items[0]
   const p2 = album.items[1]
   const p3 = album.items[2]
+  const { judul, caption } = parseJudulCaption(album.caption)
 
   return (
     <div
@@ -136,31 +138,51 @@ function AlbumCard({ album, onClick }: { album: Album; onClick: () => void }) {
         )}
       </div>
 
-      {/* ── CAPTION BELOW ── */}
-      <div style={{ padding: '14px 18px 16px', display: 'flex', flexDirection: 'column' as const, gap: 8, flex: 1 }}>
+      {/* ── JUDUL & CAPTION BELOW ── */}
+      <div style={{ padding: '16px 18px 16px', display: 'flex', flexDirection: 'column' as const, gap: 6, flex: 1 }}>
         {album.tanggal && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#01bcce', flexShrink: 0 }} />
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#01bcce', flexShrink: 0 }} />
             <span style={{ fontFamily: 'Nunito,sans-serif', fontSize: 11, fontWeight: 700, color: '#01bcce' }}>
               {fmt(album.tanggal)}
             </span>
           </div>
         )}
 
-        {/* Caption — max 3 lines */}
-        <p style={{
-          fontFamily: 'Nunito,sans-serif', fontSize: 15, fontWeight: 800,
-          color: '#00282b', margin: 0, lineHeight: 1.55,
+        {/* Judul Kegiatan */}
+        <h3 style={{
+          fontFamily: 'Nunito,sans-serif', fontSize: 16, fontWeight: 900,
+          color: '#00282b', margin: 0, lineHeight: 1.4,
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical' as any,
           overflow: 'hidden',
+          wordBreak: 'normal',
+          overflowWrap: 'break-word',
+          hyphens: 'none',
         }}>
-          {album.caption}
-        </p>
+          {judul}
+        </h3>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 8 }}>
-          <span style={{ fontFamily: 'Nunito,sans-serif', fontSize: 12, color: '#bbb', fontWeight: 600 }}>
+        {/* Caption Kegiatan (Keterangan) */}
+        {caption && (
+          <p style={{
+            fontFamily: 'Nunito,sans-serif', fontSize: 13, fontWeight: 500,
+            color: '#55696b', margin: 0, lineHeight: 1.5,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical' as any,
+            overflow: 'hidden',
+            wordBreak: 'normal',
+            overflowWrap: 'break-word',
+            hyphens: 'none',
+          }}>
+            {caption}
+          </p>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 10 }}>
+          <span style={{ fontFamily: 'Nunito,sans-serif', fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>
             {count} foto/video
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'Nunito,sans-serif', fontSize: 13, fontWeight: 800, color: hovered ? '#00282b' : '#01bcce', transition: 'color .2s' }}>

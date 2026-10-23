@@ -2,10 +2,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { deleteFileFromStorage, deleteFilesFromStorage } from '@/lib/supabase/storage-helper'
-import { Upload, Trash2, Plus, ImageIcon, Video, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { parseJudulCaption, formatJudulCaption } from '@/lib/dokumentasi-helper'
+import { Upload, Trash2, Plus, ImageIcon, Video, X, ChevronLeft, ChevronRight, Edit2, Check } from 'lucide-react'
 import Link from 'next/link'
 
 export default function AdminDokumentasiPage() {
+  const [judul, setJudul] = useState('')
   const [caption, setCaption] = useState('')
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0])
   const [fileType, setFileType] = useState<'foto' | 'video'>('foto')
@@ -15,6 +17,8 @@ export default function AdminDokumentasiPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [message, setMessage] = useState('')
   const [data, setData] = useState<any[]>([])
+  const [editingAlbum, setEditingAlbum] = useState<{ albumId: string; judul: string; caption: string; tanggal: string } | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -28,6 +32,24 @@ export default function AdminDokumentasiPage() {
     setData(d || [])
   }
 
+  async function handleSaveEdit() {
+    if (!editingAlbum || !editingAlbum.judul.trim()) return
+    setSavingEdit(true)
+    const stored = formatJudulCaption(editingAlbum.judul, editingAlbum.caption)
+    const matching = data.filter(i => (i.album_id || i.id) === editingAlbum.albumId)
+    for (const it of matching) {
+      await supabase.from('dokumentasi').update({
+        caption: stored,
+        tanggal: editingAlbum.tanggal,
+      }).eq('id', it.id)
+    }
+    setSavingEdit(false)
+    setEditingAlbum(null)
+    setMessage('✅ Judul & Caption kegiatan berhasil diperbarui!')
+    loadData()
+    setTimeout(() => setMessage(''), 4000)
+  }
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files || [])
     setFiles(selected)
@@ -38,8 +60,8 @@ export default function AdminDokumentasiPage() {
   }
 
   async function handleUpload() {
-    if (files.length === 0 || !caption.trim()) {
-      setMessage('⚠️ Caption dan minimal 1 file wajib diisi!')
+    if (files.length === 0 || !judul.trim()) {
+      setMessage('⚠️ Judul kegiatan dan minimal 1 file wajib diisi!')
       return
     }
     setUploading(true)
@@ -49,6 +71,8 @@ export default function AdminDokumentasiPage() {
     // Generate album_id — pakai timestamp sebagai pengelompokan
     const albumId = `album-${Date.now()}`
     let successCount = 0
+
+    const storedCaption = formatJudulCaption(judul, caption)
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
@@ -61,7 +85,7 @@ export default function AdminDokumentasiPage() {
 
       const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName)
       await supabase.from('dokumentasi').insert({
-        caption: caption.trim(),
+        caption: storedCaption,
         tanggal,
         file_url: publicUrl,
         file_type: fileType,
@@ -73,6 +97,7 @@ export default function AdminDokumentasiPage() {
 
     if (successCount > 0) {
       setMessage(`✅ ${successCount} file berhasil diupload!`)
+      setJudul('')
       setCaption('')
       setFiles([])
       setPreviews([])
@@ -159,11 +184,30 @@ export default function AdminDokumentasiPage() {
                 </div>
 
                 <div>
-                  <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">Judul / Caption Kegiatan</label>
-                  <textarea value={caption} onChange={e => setCaption(e.target.value)} rows={6}
-                    placeholder={'Tulis judul atau keterangan kegiatan...\n\nContoh:\nRapat Evaluasi Kinerja Q1 2026\nBertempat di Ruang Rapat Lantai 3 RSCM'}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 font-nav text-sm outline-none resize-none"
-                    style={{ lineHeight: 1.7 }} />
+                  <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                    Judul Kegiatan <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={judul}
+                    onChange={e => setJudul(e.target.value)}
+                    placeholder="Contoh: Akuntansi Goes to Gunung Mas"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 font-nav text-sm outline-none focus:border-[#01bcce]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                    Caption / Keterangan Kegiatan
+                  </label>
+                  <textarea
+                    value={caption}
+                    onChange={e => setCaption(e.target.value)}
+                    rows={4}
+                    placeholder={'Tulis keterangan atau narasi kegiatan...\n\nContoh:\nRekonsiliasi Rasa, Balance Life. Bertempat di Agrowisata Gunung Mas, Puncak.'}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 font-nav text-sm outline-none resize-none focus:border-[#01bcce]"
+                    style={{ lineHeight: 1.6 }}
+                  />
                   <p className="font-nav text-xs text-gray-400 mt-1">{caption.length} karakter</p>
                 </div>
               </div>
@@ -264,14 +308,38 @@ export default function AdminDokumentasiPage() {
                 <div key={albumId} className="border border-gray-100 rounded-2xl overflow-hidden">
                   {/* Album header */}
                   <div className="flex items-center justify-between px-4 py-3" style={{ background: '#f8fafc' }}>
-                    <div>
-                      <p className="font-nav font-bold text-sm text-gray-800">{items[0].caption}</p>
-                      <p className="font-nav text-xs text-cyan-600 mt-0.5">📅 {formatDate(items[0].tanggal)} · {items.length} foto/video</p>
+                    {(() => {
+                      const { judul: aJudul, caption: aCaption } = parseJudulCaption(items[0].caption)
+                      return (
+                        <div className="pr-4">
+                          <p className="font-nav font-bold text-sm text-[#00282b]">{aJudul}</p>
+                          {aCaption && (
+                            <p className="font-nav text-xs text-gray-500 mt-0.5 line-clamp-2">{aCaption}</p>
+                          )}
+                          <p className="font-nav text-[11px] text-[#01bcce] font-semibold mt-1">📅 {formatDate(items[0].tanggal)} · {items.length} foto/video</p>
+                        </div>
+                      )
+                    })()}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const { judul: aJudul, caption: aCaption } = parseJudulCaption(items[0].caption)
+                          setEditingAlbum({
+                            albumId,
+                            judul: aJudul,
+                            caption: aCaption,
+                            tanggal: items[0].tanggal || '',
+                          })
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 font-nav text-xs font-bold hover:bg-cyan-100 transition-colors"
+                      >
+                        <Edit2 size={12} /> Edit Judul & Caption
+                      </button>
+                      <button onClick={() => handleDeleteAlbum(albumId)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-500 font-nav text-xs font-bold hover:bg-red-100 transition-colors">
+                        <Trash2 size={12} /> Hapus Album
+                      </button>
                     </div>
-                    <button onClick={() => handleDeleteAlbum(albumId)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-400 font-nav text-xs font-bold hover:bg-red-100 transition-colors">
-                      <Trash2 size={12} /> Hapus Album
-                    </button>
                   </div>
                   {/* Photo grid */}
                   <div className="p-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -297,6 +365,87 @@ export default function AdminDokumentasiPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Judul & Caption Modal */}
+      {editingAlbum && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Edit2 size={18} style={{ color: '#01bcce' }} />
+                <h3 className="font-nav font-bold text-gray-800 text-lg">Edit Judul & Caption Kegiatan</h3>
+              </div>
+              <button
+                onClick={() => setEditingAlbum(null)}
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4">
+              <div>
+                <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  Tanggal Kegiatan
+                </label>
+                <input
+                  type="date"
+                  value={editingAlbum.tanggal}
+                  onChange={e => setEditingAlbum({ ...editingAlbum, tanggal: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none focus:border-[#01bcce]"
+                />
+              </div>
+
+              <div>
+                <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  Judul Kegiatan <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingAlbum.judul}
+                  onChange={e => setEditingAlbum({ ...editingAlbum, judul: e.target.value })}
+                  placeholder="Contoh: Akuntansi Goes to Gunung Mas"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none focus:border-[#01bcce]"
+                />
+              </div>
+
+              <div>
+                <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  Caption / Keterangan Kegiatan
+                </label>
+                <textarea
+                  value={editingAlbum.caption}
+                  onChange={e => setEditingAlbum({ ...editingAlbum, caption: e.target.value })}
+                  rows={4}
+                  placeholder="Tulis keterangan atau narasi kegiatan..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none resize-none focus:border-[#01bcce]"
+                  style={{ lineHeight: 1.6 }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setEditingAlbum(null)}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-nav text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={savingEdit || !editingAlbum.judul.trim()}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-white font-nav text-sm font-bold disabled:opacity-60 transition-all hover:opacity-90"
+                style={{ background: 'linear-gradient(135deg, #00282b, #015a61)' }}
+              >
+                <Check size={16} />
+                {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

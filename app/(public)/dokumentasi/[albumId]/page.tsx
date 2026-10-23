@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import AlbumGrid from './AlbumGrid'
+import { parseJudulCaption } from '@/lib/dokumentasi-helper'
 
 export default async function AlbumDetailPage({
   params,
@@ -39,7 +40,8 @@ export default async function AlbumDetailPage({
 
   if (items.length === 0) notFound()
 
-  const caption = items[0].caption || 'Album Dokumentasi'
+  const rawCaption = items[0].caption || 'Album Dokumentasi'
+  const { judul, caption } = parseJudulCaption(rawCaption)
   const tanggal = items[0].tanggal
     ? new Date(items[0].tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : ''
@@ -64,19 +66,53 @@ export default async function AlbumDetailPage({
         <AlbumGrid items={items} />
       </div>
 
-      {/* Caption BELOW photos */}
+      {/* Judul & Caption BELOW photos */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px 60px' }}>
-        <div style={{ background: '#ffffff', borderRadius: 16, padding: '24px 28px', border: '1px solid rgba(1,188,206,.2)', boxShadow: '0 4px 24px rgba(0,40,43,.04)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <div style={{ background: '#ffffff', borderRadius: 16, padding: '28px 32px', border: '1px solid rgba(1,188,206,.2)', boxShadow: '0 4px 24px rgba(0,40,43,.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(1,188,206,.1)', border: '1px solid rgba(1,188,206,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📷</div>
             <div>
               <p style={{ fontFamily: 'Nunito,sans-serif', fontSize: 13, fontWeight: 800, color: '#01bcce', margin: 0, textTransform: 'uppercase' as const, letterSpacing: 1 }}>Tim Kerja Akuntansi RSCM</p>
-              <p style={{ fontFamily: 'Nunito,sans-serif', fontSize: 12, color: '#666', margin: 0, marginTop: 2 }}>{tanggal}</p>
+              {tanggal && <p style={{ fontFamily: 'Nunito,sans-serif', fontSize: 12, color: '#666', margin: 0, marginTop: 2 }}>{tanggal}</p>}
             </div>
           </div>
-          <p style={{ fontFamily: 'Nunito,sans-serif', fontSize: 16, fontWeight: 600, color: '#00282b', margin: 0, lineHeight: 1.7, whiteSpace: 'pre-line' as const, wordBreak: 'break-word' as const }}>
-            {caption}
-          </p>
+
+          <h1 style={{
+            fontFamily: 'Nunito,sans-serif',
+            fontSize: 24,
+            fontWeight: 900,
+            color: '#00282b',
+            margin: '0 0 12px',
+            lineHeight: 1.35,
+            wordBreak: 'normal',
+            overflowWrap: 'break-word',
+            hyphens: 'none',
+          }}>
+            {judul}
+          </h1>
+
+          {caption && (
+            <div style={{
+              borderTop: '1px solid #f1f5f9',
+              paddingTop: 14,
+              marginTop: 10,
+            }}>
+              <p style={{
+                fontFamily: 'Nunito,sans-serif',
+                fontSize: 15,
+                fontWeight: 500,
+                color: '#475569',
+                margin: 0,
+                lineHeight: 1.7,
+                whiteSpace: 'pre-line' as const,
+                wordBreak: 'normal',
+                overflowWrap: 'break-word',
+                hyphens: 'none',
+              }}>
+                {caption}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </main>

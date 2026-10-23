@@ -33,6 +33,14 @@ export async function generateMetadata({ params }: Props) {
   }
 }
 
+function cleanProfilHtml(rawHtml?: string | null): string {
+  if (!rawHtml) return ''
+  return rawHtml
+    .replace(/\t/g, '&emsp;')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\u00a0/g, ' ')
+}
+
 export default async function ProfilSlugPage({ params }: Props) {
   const supabase = await createClient()
   const { slug } = await params
@@ -48,7 +56,6 @@ export default async function ProfilSlugPage({ params }: Props) {
     .single()
 
   let halaman = data as HalamanProfil | null
-  console.log("DEBUG_PROFIL:", { slug, data, error })
   
   if (error || !data) {
     if (slug === 'tim-kerja-akuntansi') {
@@ -147,13 +154,30 @@ export default async function ProfilSlugPage({ params }: Props) {
 
         {/* HTML Content */}
         <article
-          className="bg-white rounded-2xl p-8 shadow-lg mb-8"
-          style={{ border: '1px solid #e0e0e0' }}
+          className="bg-white rounded-2xl p-8 sm:p-10 shadow-lg mb-8 profil-vag-box"
+          style={{
+            border: '1px solid #e0e0e0',
+            fontFamily: "'VAG Rounded', 'VAG Rounded BT', 'VAGRounded BT', 'VAG Rounded Std', 'VAGRounded', 'Varela Round', 'Nunito', sans-serif"
+          }}
         >
+          <style>{`
+            .profil-vag-box,
+            .profil-vag-box * {
+              font-family: 'VAG Rounded', 'VAG Rounded BT', 'VAGRounded BT', 'VAG Rounded Std', 'VAGRounded', 'Varela Round', 'Nunito', sans-serif !important;
+              hyphens: none !important;
+              -webkit-hyphens: none !important;
+              word-break: normal !important;
+              overflow-wrap: break-word !important;
+            }
+          `}</style>
           <div
-            className="prose prose-lg max-w-none leading-relaxed text-gray-700 break-words whitespace-pre-wrap"
-            style={{ fontFamily: '"TeX Gyre Bonum", Georgia, serif' }}
-            dangerouslySetInnerHTML={{ __html: halaman.konten }}
+            className="prose prose-lg max-w-none leading-relaxed text-gray-800"
+            style={{
+              fontFamily: "'VAG Rounded', 'VAG Rounded BT', 'VAGRounded BT', 'VAG Rounded Std', 'VAGRounded', 'Varela Round', 'Nunito', sans-serif",
+              wordBreak: 'normal',
+              overflowWrap: 'break-word',
+            }}
+            dangerouslySetInnerHTML={{ __html: cleanProfilHtml(halaman.konten) }}
           />
         </article>
 

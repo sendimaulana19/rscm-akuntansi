@@ -80,6 +80,9 @@ export default function AdminProfilPage() {
         }
       }
 
+      // Bersihkan non-breaking spaces agar text wrap tidak terpotong di tengah kata
+      const cleanKonten = konten ? konten.replace(/&nbsp;/g, ' ').replace(/\u00a0/g, ' ') : ''
+
       // Check if exists
       const { data: existing } = await supabase.from('halaman_profil').select('id').eq('slug', slug).maybeSingle()
 
@@ -89,7 +92,7 @@ export default function AdminProfilPage() {
           .from('halaman_profil')
           .update({
             judul,
-            konten,
+            konten: cleanKonten,
             gambar_url: finalGambarUrl,
             updated_at: new Date().toISOString()
           })
@@ -103,7 +106,7 @@ export default function AdminProfilPage() {
           .insert({
             slug,
             judul,
-            konten,
+            konten: cleanKonten,
             gambar_url: finalGambarUrl
           })
         
