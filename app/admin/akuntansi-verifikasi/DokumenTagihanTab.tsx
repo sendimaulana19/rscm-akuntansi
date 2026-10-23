@@ -628,6 +628,19 @@ export default function DokumenTagihanTab({ onMessage }: Props) {
                 <AlertTriangle size={12} /> Belum Ada Data
               </span>
             )}
+
+            {/* Hapus Tahun Button */}
+            {(availableYears.length > 1 || existingRecordId) && (
+              <button
+                type="button"
+                onClick={handleDeleteYear}
+                disabled={loading}
+                className="px-3 py-1.5 rounded-xl text-xs font-nav font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer flex items-center gap-1.5"
+                title={`Hapus seluruh data tahun ${selectedYear}`}
+              >
+                <Trash2 size={13} /> Hapus Tahun {selectedYear}
+              </button>
+            )}
           </div>
         </div>
 
