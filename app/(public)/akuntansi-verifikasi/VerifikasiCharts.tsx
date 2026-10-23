@@ -17,7 +17,7 @@ const BULAN_SINGKAT = [
  */
 export function formatBulanDanTahun(selectedMonths: string[], year: number): string {
   if (!selectedMonths || selectedMonths.length === 0) {
-    return `(Belum pilih bulan) ${year}`
+    return ''
   }
   if (selectedMonths.length === 12) {
     return `Jan – Des ${year}`
@@ -27,7 +27,7 @@ export function formatBulanDanTahun(selectedMonths: string[], year: number): str
     .filter(idx => idx !== -1)
     .sort((a, b) => a - b)
 
-  if (indices.length === 0) return `(Belum pilih bulan) ${year}`
+  if (indices.length === 0) return ''
   if (indices.length === 1) return `${BULAN_SINGKAT[indices[0]]} ${year}`
 
   let isContiguous = true
@@ -55,7 +55,7 @@ export function formatBulanDanTahun(selectedMonths: string[], year: number): str
  */
 export function formatPeriodeLabel(selectedMonths: string[]): string {
   if (!selectedMonths || selectedMonths.length === 0) {
-    return 'Belum ada periode dipilih'
+    return 'Pilih Bulan'
   }
 
   // 12 bulan (1 tahun penuh)
@@ -1229,8 +1229,23 @@ export function VerifikasiColumnComparisonChart({
           <BarChart3 size={20} />
         </div>
         {title && <h4 className="font-black text-sm text-[#00282b]">{title}</h4>}
-        <p className="text-gray-400 font-bold text-xs mt-1">Belum ada data dokumen tagihan yang diinput pada periode yang dibandingkan.</p>
-        <p className="text-gray-400 text-[11px] mt-0.5">Diagram kolom perbandingan akan tampil otomatis setelah ada data yang diinput.</p>
+        {labelA && labelB ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">
+            {labelA} <span className="font-normal text-gray-400">vs</span> {labelB}
+          </p>
+        ) : labelA ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">{labelA}</p>
+        ) : labelB ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">{labelB}</p>
+        ) : null}
+        <p className="text-gray-400 font-bold text-xs mt-1">
+          {(!labelA && !labelB)
+            ? 'Silakan pilih bulan pada periode perbandingan di atas untuk menampilkan grafik.'
+            : 'Belum ada data dokumen tagihan yang diinput pada periode yang dibandingkan.'}
+        </p>
+        {(!labelA && !labelB) && (
+          <p className="text-gray-400 text-[11px] mt-0.5">Gunakan filter periode di atas untuk memilih bulan yang ingin dibandingkan.</p>
+        )}
       </div>
     )
   }
@@ -1259,9 +1274,15 @@ export function VerifikasiColumnComparisonChart({
         <h4 className="font-black text-sm sm:text-base text-[#00282b] leading-tight">
           {title}
         </h4>
-        <p className="text-xs font-bold text-gray-500 mt-1">
-          {labelA} <span className="font-normal text-gray-400">vs</span> {labelB}
-        </p>
+        {labelA && labelB ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">
+            {labelA} <span className="font-normal text-gray-400">vs</span> {labelB}
+          </p>
+        ) : labelA ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">{labelA}</p>
+        ) : labelB ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">{labelB}</p>
+        ) : null}
 
         {/* Floating Tooltip saat hover */}
         {hovered && (
@@ -1601,8 +1622,20 @@ export function VerifikasiHorizontalBarComparisonChart({
           <BarChart3 size={20} />
         </div>
         {title && <h4 className="font-black text-sm text-[#00282b]">{title}</h4>}
-        <p className="text-gray-400 font-bold text-xs mt-1">Belum ada data dokumen tagihan yang diinput pada periode yang dibandingkan.</p>
-        <p className="text-gray-400 text-[11px] mt-0.5">Diagram batang horizontal akan tampil otomatis setelah ada data yang diinput.</p>
+        {labelA && labelB ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">
+            {labelA} <span className="font-normal text-gray-400">vs</span> {labelB}
+          </p>
+        ) : labelA ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">{labelA}</p>
+        ) : labelB ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">{labelB}</p>
+        ) : null}
+        <p className="text-gray-400 font-bold text-xs mt-1">
+          {(!labelA && !labelB)
+            ? 'Silakan pilih bulan pada periode perbandingan di atas untuk menampilkan grafik.'
+            : 'Belum ada data dokumen tagihan yang diinput pada periode yang dibandingkan.'}
+        </p>
       </div>
     )
   }
@@ -1629,14 +1662,14 @@ export function VerifikasiHorizontalBarComparisonChart({
 
   const bars = [
     {
-      period: labelA,
+      period: labelA || 'Periode A',
       internal: internalA,
       eksternal: eksternalA,
       keseluruhan: keseluruhanA,
       y: startY,
     },
     {
-      period: labelB,
+      period: labelB || 'Periode B',
       internal: internalB,
       eksternal: eksternalB,
       keseluruhan: keseluruhanB,
@@ -1651,9 +1684,15 @@ export function VerifikasiHorizontalBarComparisonChart({
         <h4 className="font-black text-sm sm:text-base text-[#00282b] leading-tight">
           {title}
         </h4>
-        <p className="text-xs font-bold text-gray-500 mt-1">
-          {labelA} <span className="font-normal text-gray-400">vs</span> {labelB}
-        </p>
+        {labelA && labelB ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">
+            {labelA} <span className="font-normal text-gray-400">vs</span> {labelB}
+          </p>
+        ) : labelA ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">{labelA}</p>
+        ) : labelB ? (
+          <p className="text-xs font-bold text-gray-500 mt-1">{labelB}</p>
+        ) : null}
 
         {/* Floating Tooltip saat hover */}
         {hovered && (

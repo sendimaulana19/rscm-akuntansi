@@ -815,6 +815,43 @@ export default function AdminAkuntansiVerifikasi() {
     }
   }
 
+  const handleDeleteSlaYear = async () => {
+    if (!confirm(`Apakah Anda yakin ingin MENGHAPUS TAHUN ${slaSelectedYear} dari verifikasi SLA? Seluruh data SLA tahun ini akan dihapus permanen dari database.`)) {
+      return
+    }
+
+    setLoading(true)
+    setMessage(null)
+
+    try {
+      if (slaExistingRecordId) {
+        const { error } = await supabase
+          .from('financial_reports_data')
+          .delete()
+          .eq('category', 'verifikasi_sla')
+          .eq('year', slaSelectedYear)
+
+        if (error) throw error
+      }
+
+      setSlaExistingRecordId(null)
+      const remainingYears = slaAvailableYears.filter(y => y !== slaSelectedYear)
+      const nextYear = remainingYears.length > 0 ? remainingYears[0] : currentYear
+      const updatedYears = remainingYears.length > 0 ? remainingYears : [currentYear]
+      setSlaAvailableYears(updatedYears)
+      setSlaSelectedYear(nextYear)
+      loadSlaData(nextYear)
+
+      setMessage({ type: 'ok', text: `Tahun ${slaSelectedYear} telah berhasil dihapus dari SLA!` })
+      await fetchAvailableSlaYears()
+    } catch (err: any) {
+      setMessage({ type: 'err', text: 'Gagal menghapus tahun SLA: ' + err.message })
+    } finally {
+      setLoading(false)
+      setTimeout(() => setMessage(null), 4000)
+    }
+  }
+
   const handleQuickEditSla = (bulan: string) => {
     handleSelectSlaBulan(bulan)
     window.scrollTo({ top: 350, behavior: 'smooth' })
@@ -1401,6 +1438,43 @@ export default function AdminAkuntansiVerifikasi() {
     }
   }
 
+  const handleDeleteBaYear = async () => {
+    if (!confirm(`Apakah Anda yakin ingin MENGHAPUS TAHUN ${baSelectedYear} dari verifikasi BA Tutup Tagihan? Seluruh data BA tahun ini akan dihapus permanen dari database.`)) {
+      return
+    }
+
+    setLoading(true)
+    setMessage(null)
+
+    try {
+      if (baExistingRecordId) {
+        const { error } = await supabase
+          .from('financial_reports_data')
+          .delete()
+          .eq('category', 'verifikasi_ba_tutup_tagihan')
+          .eq('year', baSelectedYear)
+
+        if (error) throw error
+      }
+
+      setBaExistingRecordId(null)
+      const remainingYears = baAvailableYears.filter(y => y !== baSelectedYear)
+      const nextYear = remainingYears.length > 0 ? remainingYears[0] : currentYear
+      const updatedYears = remainingYears.length > 0 ? remainingYears : [currentYear]
+      setBaAvailableYears(updatedYears)
+      setBaSelectedYear(nextYear)
+      loadBaData(nextYear)
+
+      setMessage({ type: 'ok', text: `Tahun ${baSelectedYear} telah berhasil dihapus dari BA Tutup Tagihan!` })
+      await fetchAvailableBaYears()
+    } catch (err: any) {
+      setMessage({ type: 'err', text: 'Gagal menghapus tahun BA Tutup Tagihan: ' + err.message })
+    } finally {
+      setLoading(false)
+      setTimeout(() => setMessage(null), 4000)
+    }
+  }
+
   const handleQuickEditBa = (bulan: string) => {
     handleSelectBaBulan(bulan)
     window.scrollTo({ top: 350, behavior: 'smooth' })
@@ -1638,9 +1712,9 @@ export default function AdminAkuntansiVerifikasi() {
     }
   }
 
-  // Hapus seluruh data tahun aktif dari database
+  // Hapus tahun aktif dari database
   const handleDeleteYear = async () => {
-    if (!confirm(`Apakah Anda yakin ingin MENGHAPUS SELURUH data verifikasi tahun ${selectedYear} dari database? Data yang dihapus tidak akan tampil lagi di halaman publik.`)) {
+    if (!confirm(`Apakah Anda yakin ingin MENGHAPUS TAHUN ${selectedYear}? Tahun ini dan seluruh datanya akan dihapus permanen dari verifikasi dokumen tagihan.`)) {
       return
     }
 
@@ -1648,23 +1722,32 @@ export default function AdminAkuntansiVerifikasi() {
     setMessage(null)
 
     try {
-      const { error } = await supabase
-        .from('financial_reports_data')
-        .delete()
-        .eq('category', 'verifikasi_dokumen_tagihan')
-        .eq('year', selectedYear)
+      if (existingRecordId) {
+        const { error } = await supabase
+          .from('financial_reports_data')
+          .delete()
+          .eq('category', 'verifikasi_dokumen_tagihan')
+          .eq('year', selectedYear)
 
-      if (error) throw error
+        if (error) throw error
+      }
 
       setExistingRecordId(null)
       const empty = createEmptyMonths()
       setMonthsData(empty)
       loadMonthToForm(empty, editBulan)
 
-      setMessage({ type: 'ok', text: `Seluruh data verifikasi tahun ${selectedYear} telah berhasil dihapus dari database!` })
+      const remainingYears = availableYears.filter(y => y !== selectedYear)
+      const nextYear = remainingYears.length > 0 ? remainingYears[0] : currentYear
+      const updatedYears = remainingYears.length > 0 ? remainingYears : [currentYear]
+      setAvailableYears(updatedYears)
+      setSelectedYear(nextYear)
+      loadData(nextYear)
+
+      setMessage({ type: 'ok', text: `Tahun ${selectedYear} telah berhasil dihapus!` })
       await fetchAvailableYears()
     } catch (err: any) {
-      setMessage({ type: 'err', text: 'Gagal menghapus data: ' + err.message })
+      setMessage({ type: 'err', text: 'Gagal menghapus tahun: ' + err.message })
     } finally {
       setLoading(false)
       setTimeout(() => setMessage(null), 4000)
@@ -1918,16 +2001,16 @@ export default function AdminAkuntansiVerifikasi() {
 
             {/* Tombol Aksi Hapus / Reset Tahun */}
             <div className="flex items-center gap-2 flex-wrap">
-              {existingRecordId && (
+              {(availableYears.length > 1 || existingRecordId) && (
                 <button
                   type="button"
                   onClick={handleDeleteYear}
                   disabled={loading}
                   className="px-3.5 py-2 rounded-xl text-xs font-nav font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer flex items-center gap-1.5"
-                  title={`Hapus seluruh data tahun ${selectedYear} dari database`}
+                  title={`Hapus tahun ${selectedYear} dari verifikasi dokumen tagihan`}
                 >
                   <Trash2 size={13} />
-                  Hapus Data Tahun {selectedYear}
+                  Hapus Tahun {selectedYear}
                 </button>
               )}
               <button
@@ -2503,9 +2586,23 @@ export default function AdminAkuntansiVerifikasi() {
                 </div>
               </div>
 
-              {/* Status Kategori & Bulan Ini */}
-              <div className="text-xs font-nav text-gray-500 flex items-center gap-2">
-                <span>Kategori: <strong className="text-[#01bcce]">{getActiveSlaTitle(slaCategory)}</strong> — Bulan: <strong className="text-[#00282b]">{slaEditBulan} {slaSelectedYear}</strong></span>
+              {/* Status Kategori & Tombol Hapus Tahun SLA */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="text-xs font-nav text-gray-500">
+                  <span>Kategori: <strong className="text-[#01bcce]">{getActiveSlaTitle(slaCategory)}</strong> — Bulan: <strong className="text-[#00282b]">{slaEditBulan} {slaSelectedYear}</strong></span>
+                </div>
+                {(slaAvailableYears.length > 1 || slaExistingRecordId) && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteSlaYear}
+                    disabled={loading}
+                    className="px-3 py-1.5 rounded-xl text-xs font-nav font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer flex items-center gap-1.5"
+                    title={`Hapus tahun ${slaSelectedYear} dari verifikasi SLA`}
+                  >
+                    <Trash2 size={13} />
+                    Hapus Tahun {slaSelectedYear}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -3353,9 +3450,23 @@ export default function AdminAkuntansiVerifikasi() {
                 </div>
               </div>
 
-              {/* Status Bulan Ini */}
-              <div className="text-xs font-nav text-gray-500 flex items-center gap-2">
-                <span>Mengedit: <strong className="text-[#00282b]">{getActiveBaTitle(baCategory)} — {baEditBulan} {baSelectedYear}</strong></span>
+              {/* Status Bulan Ini & Tombol Hapus Tahun BA */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="text-xs font-nav text-gray-500">
+                  <span>Mengedit: <strong className="text-[#00282b]">{getActiveBaTitle(baCategory)} — {baEditBulan} {baSelectedYear}</strong></span>
+                </div>
+                {(baAvailableYears.length > 1 || baExistingRecordId) && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteBaYear}
+                    disabled={loading}
+                    className="px-3 py-1.5 rounded-xl text-xs font-nav font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer flex items-center gap-1.5"
+                    title={`Hapus tahun ${baSelectedYear} dari verifikasi BA Tutup Tagihan`}
+                  >
+                    <Trash2 size={13} />
+                    Hapus Tahun {baSelectedYear}
+                  </button>
+                )}
               </div>
             </div>
 

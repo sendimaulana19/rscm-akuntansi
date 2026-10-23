@@ -785,7 +785,7 @@ function ComparisonDropdownPicker({
           <div className="flex items-center gap-1.5">
             <Filter size={12} className={isOpen ? 'text-[#01bcce]' : 'text-[#008080]'} />
             <span className="truncate max-w-[130px]">
-              {formatPeriodeLabel(months)}
+              {months.length === 0 ? 'Pilih Bulan' : formatPeriodeLabel(months)}
             </span>
           </div>
           <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
@@ -1113,6 +1113,15 @@ export default function AkuntansiVerifikasiClient({
 
   const labelA = useMemo(() => formatBulanDanTahun(compMonthsA, compYearA), [compMonthsA, compYearA])
   const labelB = useMemo(() => formatBulanDanTahun(compMonthsB, compYearB), [compMonthsB, compYearB])
+
+  const handleResetComparison = () => {
+    const defaultYearA = availableYears[0] || new Date().getFullYear()
+    const defaultYearB = availableYears[1] || availableYears[0] || new Date().getFullYear()
+    setCompYearA(defaultYearA)
+    setCompMonthsA([])
+    setCompYearB(defaultYearB)
+    setCompMonthsB([])
+  }
 
   // Unified Comparison Data (Internal, Eksternal & Keseluruhan)
   const comparisonItems = useMemo(() => {
@@ -2207,7 +2216,7 @@ export default function AkuntansiVerifikasiClient({
 
                   {/* FILTER DROPDOWN: BULAN & TAHUN (Tanpa Label Periode 1 & Periode 2) */}
                   <div className="bg-white rounded-2xl py-2 px-4 sm:px-5 border border-gray-200 mb-5 shadow-xs font-nav">
-                    <div className="flex flex-col lg:flex-row items-center justify-center gap-3 sm:gap-5">
+                    <div className="flex flex-col lg:flex-row items-center justify-center gap-3 sm:gap-4 flex-wrap">
                       {/* Dropdown List Bulan dan Tahun Periode A */}
                       <ComparisonDropdownPicker
                         year={compYearA}
@@ -2235,6 +2244,19 @@ export default function AkuntansiVerifikasiClient({
                         onMonthsChange={setCompMonthsB}
                         availableYears={availableYears}
                       />
+
+                      {/* Tombol Reset Perbandingan (Termasuk Tahun & Bulan) */}
+                      <div className="flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={handleResetComparison}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-nav font-bold text-gray-600 hover:text-red-600 bg-gray-50 hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-all cursor-pointer shadow-2xs"
+                          title="Reset pilihan tahun dan bulan perbandingan ke kondisi awal"
+                        >
+                          <RotateCcw size={13} className="text-gray-400 group-hover:text-red-500" />
+                          <span>Reset</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -2279,9 +2301,15 @@ export default function AkuntansiVerifikasiClient({
                         <h3 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
                           Tabel Perbandingan Dokumen Tagihan
                         </h3>
-                        <p className="font-nav text-xs font-bold text-gray-400 mt-0.5">
-                          {labelA} <span className="font-normal text-gray-300">vs</span> {labelB}
-                        </p>
+                        {labelA && labelB ? (
+                          <p className="font-nav text-xs font-bold text-gray-400 mt-0.5">
+                            {labelA} <span className="font-normal text-gray-300">vs</span> {labelB}
+                          </p>
+                        ) : labelA || labelB ? (
+                          <p className="font-nav text-xs font-bold text-gray-400 mt-0.5">
+                            {labelA || labelB}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -2317,7 +2345,13 @@ export default function AkuntansiVerifikasiClient({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {comparisonItems.length === 0 ? (
+                          {(!compMonthsA.length && !compMonthsB.length) ? (
+                            <tr>
+                              <td colSpan={8} className="py-6 text-center text-gray-400 font-bold text-xs">
+                                Silakan pilih bulan pada periode perbandingan di atas untuk menampilkan data.
+                              </td>
+                            </tr>
+                          ) : comparisonItems.length === 0 ? (
                             <tr>
                               <td colSpan={8} className="py-6 text-center text-gray-400 font-bold text-xs">
                                 Belum ada data dokumen tagihan yang diinput untuk periode ini.
