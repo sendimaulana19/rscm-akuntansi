@@ -386,9 +386,9 @@ export function VerifikasiLineChart({ data, title, periodeLabel, selectedBulan }
     )
   }
 
-  // Tentukan nilai maksimum untuk sumbu Y
+  // Tentukan nilai maksimum untuk sumbu Y (Hanya Jumlah Dokumen dan Lolos Verifikasi, Proses Verifikasi hanya di tabel)
   const maxVal = Math.max(
-    ...data.flatMap(d => [d.jumlah_dokumen, d.proses, d.lolos]),
+    ...data.flatMap(d => [d.jumlah_dokumen, d.lolos]),
     10
   )
   const ceiling = Math.ceil(maxVal * 1.15)
@@ -423,13 +423,13 @@ export function VerifikasiLineChart({ data, title, periodeLabel, selectedBulan }
   const getY = (val: number) => Number((padTop + plotHeight - (val / ceiling) * plotHeight).toFixed(2))
 
   // Garis Biasa Lurus (Straight Polyline, Tidak Meliuk-liuk)
-  const makeStraightPath = (key: 'jumlah_dokumen' | 'proses' | 'lolos') => {
+  const makeStraightPath = (key: 'jumlah_dokumen' | 'lolos') => {
     if (n <= 0) return ''
     return data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d[key])}`).join(' ')
   }
 
   // Area lurus di bawah garis
-  const makeStraightAreaPath = (key: 'jumlah_dokumen' | 'proses' | 'lolos') => {
+  const makeStraightAreaPath = (key: 'jumlah_dokumen' | 'lolos') => {
     if (n <= 1) return ''
     const linePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d[key])}`).join(' ')
     const bottomY = padTop + plotHeight
@@ -528,16 +528,6 @@ export function VerifikasiLineChart({ data, title, periodeLabel, selectedBulan }
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {/* 3. Garis Proses Verifikasi (Cyan #01bcce Dashed) */}
-            <path
-              d={makeStraightPath('proses')}
-              fill="none"
-              stroke="#01bcce"
-              strokeWidth="2.4"
-              strokeDasharray="5 4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
 
             {/* Garis Vertikal Penunjuk saat Titik Diarahkan (Hover Guide) */}
             {activeIndex !== null && (
@@ -557,7 +547,6 @@ export function VerifikasiLineChart({ data, title, periodeLabel, selectedBulan }
             {data.map((d, i) => {
               const x = getX(i)
               const yJumlah = getY(d.jumlah_dokumen)
-              const yProses = getY(d.proses)
               const yLolos = getY(d.lolos)
               const isHovered = activeIndex === i
 
@@ -612,19 +601,6 @@ export function VerifikasiLineChart({ data, title, periodeLabel, selectedBulan }
                     fill="#d0db41"
                     stroke="#268484"
                     strokeWidth="2"
-                  />
-
-                  {/* Titik Proses Verifikasi */}
-                  {isHovered && (
-                    <circle cx={x} cy={yProses} r={7} fill="#01bcce" opacity="0.25" />
-                  )}
-                  <circle
-                    cx={x}
-                    cy={yProses}
-                    r={isHovered ? 5.5 : 4}
-                    fill="#01bcce"
-                    stroke="#ffffff"
-                    strokeWidth="2.5"
                   />
 
                   {/* Invisible Hit Area Column untuk hover responsif dan mudah */}
@@ -685,15 +661,6 @@ export function VerifikasiLineChart({ data, title, periodeLabel, selectedBulan }
                       {hoveredData.lolos.toLocaleString('id-ID')}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-cyan-300 flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#01bcce] inline-block shadow-sm" />
-                      Proses:
-                    </span>
-                    <span className="font-black text-[#01bcce]">
-                      {hoveredData.proses.toLocaleString('id-ID')}
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -710,10 +677,6 @@ export function VerifikasiLineChart({ data, title, periodeLabel, selectedBulan }
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lime-50/70 border border-[#d0db41]/30 text-lime-800">
           <span className="w-3 h-3 rounded-full bg-[#d0db41]" />
           <span>Lolos Verifikasi</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50/70 border border-cyan-100 text-[#01bcce]">
-          <span className="w-3 h-3 rounded-full bg-[#01bcce]" />
-          <span>Proses Verifikasi</span>
         </div>
       </div>
     </div>
@@ -759,7 +722,7 @@ export function VerifikasiBarChart({
         <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-[#eef9fa] text-[#01bcce]">
           <BarChart3 size={20} />
         </div>
-        {title && <h4 className="font-black text-sm text-[#00282b]">{title}</h4>}
+        {title && <h4 className="font-nav font-black text-sm text-[#00282b]">{title}</h4>}
         <p className="text-gray-400 font-bold text-xs mt-1">Belum ada data dokumen tagihan yang diinput pada periode yang dibandingkan.</p>
         <p className="text-gray-400 text-[11px] mt-0.5">Diagram batang perbandingan akan tampil otomatis setelah ada data yang diinput.</p>
       </div>
@@ -1228,7 +1191,7 @@ export function VerifikasiColumnComparisonChart({
         <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-[#eef9fa] text-[#01bcce]">
           <BarChart3 size={20} />
         </div>
-        {title && <h4 className="font-black text-sm text-[#00282b]">{title}</h4>}
+        {title && <h4 className="font-nav font-black text-sm text-[#00282b]">{title}</h4>}
         {labelA && labelB ? (
           <p className="text-xs font-bold text-gray-500 mt-1">
             {labelA} <span className="font-normal text-gray-400">vs</span> {labelB}
@@ -1271,7 +1234,7 @@ export function VerifikasiColumnComparisonChart({
     <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs flex flex-col justify-between font-nav w-full">
       {/* Header (Center, tanpa bulat di judul) */}
       <div className="pb-3 border-b border-gray-100 text-center relative">
-        <h4 className="font-black text-sm sm:text-base text-[#00282b] leading-tight">
+        <h4 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
           {title}
         </h4>
         {labelA && labelB ? (
@@ -1621,7 +1584,7 @@ export function VerifikasiHorizontalBarComparisonChart({
         <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-[#eef9fa] text-[#01bcce]">
           <BarChart3 size={20} />
         </div>
-        {title && <h4 className="font-black text-sm text-[#00282b]">{title}</h4>}
+        {title && <h4 className="font-nav font-black text-sm text-[#00282b]">{title}</h4>}
         {labelA && labelB ? (
           <p className="text-xs font-bold text-gray-500 mt-1">
             {labelA} <span className="font-normal text-gray-400">vs</span> {labelB}
@@ -1681,7 +1644,7 @@ export function VerifikasiHorizontalBarComparisonChart({
     <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs flex flex-col justify-between font-nav w-full">
       {/* Header (Center, tanpa bulat di judul, tanpa teks Garis X/Y) */}
       <div className="pb-3 border-b border-gray-100 text-center relative">
-        <h4 className="font-black text-sm sm:text-base text-[#00282b] leading-tight">
+        <h4 className="font-nav font-black text-sm sm:text-base text-[#00282b] leading-tight">
           {title}
         </h4>
         {labelA && labelB ? (
@@ -1918,7 +1881,7 @@ export function SlaSectionLineChart({
         <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-[#eef9fa] text-[#01bcce]">
           <BarChart3 size={20} />
         </div>
-        {title && <h4 className="font-black text-sm text-[#00282b] mb-1">{title}</h4>}
+        {title && <h4 className="font-nav font-black text-sm text-[#00282b] mb-1">{title}</h4>}
         <p className="text-gray-400 font-bold text-sm">Belum ada data SLA yang diinput untuk periode ini.</p>
         <p className="text-gray-300 text-xs mt-1">Grafik tren akan tampil otomatis setelah ada data yang diinput.</p>
       </div>
@@ -4067,7 +4030,7 @@ export function BaProgressLineChart({
         <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-[#eef9fa] text-[#01bcce]">
           <TrendingUp size={20} />
         </div>
-        {title && <h4 className="font-black text-sm text-[#00282b] mb-1">{title}</h4>}
+        {title && <h4 className="font-nav font-black text-sm text-[#00282b] mb-1">{title}</h4>}
         <p className="text-gray-400 font-bold text-sm">Belum ada data BA yang diinput untuk periode ini.</p>
         <p className="text-gray-300 text-xs mt-1">Grafik persentase capaian akan muncul otomatis setelah data diinput.</p>
       </div>
@@ -4111,10 +4074,24 @@ export function BaProgressLineChart({
   // Path Line 2: Capaian Sudah Terbit BA (%)
   const pathTerbit = validData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.terbitPct)}`).join(' ')
 
-  // Area Shading di bawah garis Terbit BA
-  const areaTerbit = n > 0
+  // Area Shading 1: Area Sudah Terbit BA (di bawah garis Terbit BA hingga dasar 0%)
+  const areaSudah = n > 1
     ? `${pathTerbit} L ${getX(n - 1)} ${padTop + plotHeight} L ${getX(0)} ${padTop + plotHeight} Z`
     : ''
+
+  // Area Shading 2: Area Belum Terbit BA (di antara garis target 100% dan garis Terbit BA)
+  const reversedTerbitCoords = validData
+    .map((d, i) => ({ x: getX(i), y: getY(d.terbitPct) }))
+    .reverse()
+    .map(pt => `L ${pt.x} ${pt.y}`)
+    .join(' ')
+
+  const areaBelum = n > 1
+    ? `${pathTotal100} ${reversedTerbitCoords} Z`
+    : ''
+
+  const sudahGradId = `areaSudahGrad_${colorTerbit.replace(/[^a-zA-Z0-9]/g, '')}`
+  const belumGradId = `areaBelumGrad_${colorTerbit.replace(/[^a-zA-Z0-9]/g, '')}`
 
   const activeIndex = hoveredIdx !== null ? hoveredIdx : null
   const hoveredData = activeIndex !== null && activeIndex >= 0 && activeIndex < validData.length ? validData[activeIndex] : null
@@ -4144,10 +4121,16 @@ export function BaProgressLineChart({
       <div className="relative my-auto flex-1 flex items-center justify-center py-2 select-none overflow-x-auto">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible" style={{ maxHeight: 290, minWidth: 420 }}>
           <defs>
-            {/* Shading Area Gradient */}
-            <linearGradient id="terbitProgressGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={colorTerbit} stopOpacity="0.25" />
-              <stop offset="100%" stopColor={colorTerbit} stopOpacity="0.02" />
+            {/* Shading Area Belum Terbit BA (Warm Rose Gradient) */}
+            <linearGradient id={belumGradId} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#fb7185" stopOpacity="0.06" />
+            </linearGradient>
+
+            {/* Shading Area Sudah Terbit BA (Vibrant Gradient) */}
+            <linearGradient id={sudahGradId} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={colorTerbit} stopOpacity="0.38" />
+              <stop offset="100%" stopColor={colorTerbit} stopOpacity="0.10" />
             </linearGradient>
           </defs>
 
@@ -4191,12 +4174,21 @@ export function BaProgressLineChart({
             strokeWidth="1.5"
           />
 
-          {/* Area Soft Fill di bawah garis capaian Sudah Terbit BA */}
+          {/* 1. Area Belum Terbit BA (Di antara garis 100% dan garis Sudah Terbit) */}
           {n > 1 && (
             <path
-              d={areaTerbit}
-              fill="url(#terbitProgressGradient)"
-              className="pointer-events-none"
+              d={areaBelum}
+              fill={`url(#${belumGradId})`}
+              className="pointer-events-none transition-all duration-300"
+            />
+          )}
+
+          {/* 2. Area Sudah Terbit BA (Di bawah garis Sudah Terbit) */}
+          {n > 1 && (
+            <path
+              d={areaSudah}
+              fill={`url(#${sudahGradId})`}
+              className="pointer-events-none transition-all duration-300"
             />
           )}
 
@@ -4388,15 +4380,34 @@ export function BaProgressLineChart({
         )}
       </div>
 
-      {/* Legend Garis di Bawah */}
-      <div className="flex items-center justify-center gap-4 text-xs font-bold pt-3 border-t border-gray-100 font-nav">
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-teal-50 border border-[#268484]/20 text-[#268484]">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#268484]" />
-          <span>{totalLabel} (%)</span>
+      {/* Legend Garis & Area di Bawah */}
+      <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs font-bold pt-3 border-t border-gray-100 font-nav">
+        {/* Total Target 100% */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 border border-[#268484]/25 text-[#268484] shadow-xs">
+          <span className="w-4 h-1 rounded-full bg-[#268484] inline-block" />
+          <span>{totalLabel} (100%)</span>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-lime-50 border border-[#d0db41]/30 text-lime-900">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#d0db41]" />
-          <span>{terbitLabel} (%)</span>
+
+        {/* Area Sudah Terbit BA */}
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-xs"
+          style={{
+            backgroundColor: colorTerbit === '#d0db41' ? '#fbfde8' : '#eef9fa',
+            borderColor: colorTerbit === '#d0db41' ? '#d0db41' : '#01bcce',
+            color: colorTerbit === '#d0db41' ? '#566000' : '#017c88',
+          }}
+        >
+          <span
+            className="w-3.5 h-3.5 rounded-md inline-block shadow-xs"
+            style={{ backgroundColor: colorTerbit, opacity: 0.85 }}
+          />
+          <span>Area {terbitLabel} (Sudah)</span>
+        </div>
+
+        {/* Area Belum Terbit BA */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 shadow-xs">
+          <span className="w-3.5 h-3.5 rounded-md inline-block bg-rose-400 opacity-80 shadow-xs" />
+          <span>Area Belum Terbit BA</span>
         </div>
       </div>
     </div>
