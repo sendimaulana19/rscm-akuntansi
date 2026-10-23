@@ -2359,7 +2359,7 @@ export default function AkuntansiVerifikasiClient({
                             </tr>
                           ) : (
                             comparisonItems.map((row, idx) => (
-                              <tr key={row.bulan} className="rowHover" style={{ background: idx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
+                              <tr key={`${row.bulan}-${idx}`} className="rowHover" style={{ background: idx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
                                 {/* Periode A */}
                                 <td style={{ padding: '5px 14px', textAlign: 'left', borderRight: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 700, color: '#00282b' }}>
                                   {row.isIncludedA ? `${row.bulanSingkat} ${compYearA}` : '-'}

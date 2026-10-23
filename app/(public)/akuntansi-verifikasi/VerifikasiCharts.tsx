@@ -1357,7 +1357,7 @@ export function VerifikasiColumnComparisonChart({
             const yEksB = Number((padTop + plotHeight - hTotB).toFixed(2))
 
             return (
-              <g key={item.bulan}>
+              <g key={`${item.bulan}-${idx}`}>
                 {/* 1. STACKED BAR A */}
                 <g
                   className="cursor-pointer transition-all duration-200 hover:opacity-85"
@@ -1756,7 +1756,7 @@ export function VerifikasiHorizontalBarComparisonChart({
           />
 
           {/* 2 STACKED HORIZONTAL BARS */}
-          {bars.map((b) => {
+          {bars.map((b, idx) => {
             const wInt = Number(((b.internal / ceil) * plotWidth).toFixed(2))
             const wEks = Number(((b.eksternal / ceil) * plotWidth).toFixed(2))
             const wTot = wInt + wEks
@@ -1765,7 +1765,7 @@ export function VerifikasiHorizontalBarComparisonChart({
 
             return (
               <g
-                key={b.period}
+                key={`stacked-bar-${idx}`}
                 className="cursor-pointer transition-all duration-200 hover:opacity-85"
                 onMouseEnter={() => setHovered({
                   period: b.period,
