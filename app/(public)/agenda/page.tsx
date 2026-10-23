@@ -74,13 +74,13 @@ export default function AgendaPage() {
                   >
                     <span style={{ color: '#01bcce' }}>Google Calendar</span>
                     <span className="text-white/40">|</span>
-                    <span className="text-white/90 text-xs sm:text-sm font-semibold">Agenda Terpadu Tim Akuntansi RSCM</span>
+                    <span className="text-white/90 text-xs sm:text-sm font-semibold">Agenda Kegiatan Tim Akuntansi RSCM</span>
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <a
-                    href="https://calendar.google.com/calendar/u/2/r/day"
+                    href="https://calendar.google.com/calendar/u/2?cid=YWt1bnRhbnNpcnNjbUBnbWFpbC5jb20"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all hover:opacity-90"
@@ -92,38 +92,14 @@ export default function AgendaPage() {
                       textDecoration: 'none'
                     }}
                   >
-                    Buka Tampilan Hari (Side-by-Side) ↗
+                    Buka di Google Calendar ↗
                   </a>
                 </div>
               </div>
 
-              {/* Legend Anggota / Kalender */}
-              <div
-                className="px-4 py-2.5 flex flex-wrap items-center gap-3 border-b border-gray-100 text-xs"
-                style={{ background: '#f8fafc', fontFamily: 'Nunito, sans-serif' }}
-              >
-                <span className="font-bold text-gray-500 uppercase tracking-wider text-[11px]">Kalender Terhubung:</span>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#01bcce' }} />
-                  <span className="font-semibold text-gray-700">akuntansi rscm</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#8E24AA' }} />
-                  <span className="font-semibold text-gray-700">satrionugroho2908</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#D50000' }} />
-                  <span className="font-semibold text-gray-700">teguhsantosa.data</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#795548' }} />
-                  <span className="font-semibold text-gray-700">wiwien.buena</span>
-                </div>
-              </div>
-
-              {/* Calendar iframe — Multi-Calendar Embed Full Width */}
+              {/* Calendar iframe — Full Width */}
               <iframe
-                src="https://calendar.google.com/calendar/embed?src=akuntansirscm%40gmail.com&color=%2301bcce&src=satrionugroho2908%40gmail.com&color=%238E24AA&src=teguhsantosa.data%40gmail.com&color=%23D50000&src=wiwien.buena%40gmail.com&color=%23795548&ctz=Asia%2FJakarta&mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=1&showTz=1"
+                src="https://calendar.google.com/calendar/embed?src=akuntansirscm%40gmail.com&ctz=Asia%2FJakarta&mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&showTz=1"
                 title="Agenda Kegiatan Tim Akuntansi RSCM"
                 frameBorder="0"
                 scrolling="no"
