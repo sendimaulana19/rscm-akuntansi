@@ -154,26 +154,49 @@ export default async function ProfilSlugPage({ params }: Props) {
 
         {/* HTML Content */}
         <article
-          className="bg-white rounded-2xl p-8 sm:p-10 shadow-lg mb-8 profil-vag-box"
+          className="bg-white rounded-2xl p-8 sm:p-10 shadow-lg mb-8 profil-content-box"
           style={{
             border: '1px solid #e0e0e0',
-            fontFamily: "'VAG Rounded', 'VAG Rounded BT', 'VAGRounded BT', 'VAG Rounded Std', 'VAGRounded', 'Varela Round', 'Nunito', sans-serif"
+            fontFamily: "'Times New Roman', Times, Georgia, serif"
           }}
         >
           <style>{`
-            .profil-vag-box,
-            .profil-vag-box * {
-              font-family: 'VAG Rounded', 'VAG Rounded BT', 'VAGRounded BT', 'VAG Rounded Std', 'VAGRounded', 'Varela Round', 'Nunito', sans-serif !important;
+            .profil-content-box,
+            .profil-content-box * {
+              font-family: 'Times New Roman', Times, Georgia, serif !important;
               hyphens: none !important;
               -webkit-hyphens: none !important;
               word-break: normal !important;
               overflow-wrap: break-word !important;
             }
+            .profil-content-box .ql-align-justify {
+              text-align: justify !important;
+              text-justify: inter-word !important;
+            }
+            .profil-content-box .ql-align-center {
+              text-align: center !important;
+            }
+            .profil-content-box .ql-align-right {
+              text-align: right !important;
+            }
+            .profil-content-box .ql-align-left {
+              text-align: left !important;
+            }
+            .profil-content-box p {
+              margin-bottom: 1.25em;
+              line-height: 1.85;
+              font-size: 1.0625rem;
+              color: #1e293b;
+            }
+            .profil-content-box p:not(.ql-align-center):not(.ql-align-right):not(.ql-align-left) {
+              text-align: justify !important;
+              text-justify: inter-word !important;
+            }
           `}</style>
           <div
-            className="prose prose-lg max-w-none leading-relaxed text-gray-800"
+            className="prose prose-lg max-w-none text-gray-800"
             style={{
-              fontFamily: "'VAG Rounded', 'VAG Rounded BT', 'VAGRounded BT', 'VAG Rounded Std', 'VAGRounded', 'Varela Round', 'Nunito', sans-serif",
+              fontFamily: "'Times New Roman', Times, Georgia, serif",
               wordBreak: 'normal',
               overflowWrap: 'break-word',
             }}

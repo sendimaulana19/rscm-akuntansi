@@ -33,6 +33,29 @@ p, span, div, h1, h2, h3, h4, h5, h6, a, article, section, blockquote, label {
   word-break: normal;
 }
 
+/* ── Quill Rich Text Alignment & Indentation Support ── */
+.ql-align-justify {
+  text-align: justify !important;
+  text-justify: inter-word !important;
+}
+.ql-align-center {
+  text-align: center !important;
+}
+.ql-align-right {
+  text-align: right !important;
+}
+.ql-align-left {
+  text-align: left !important;
+}
+.ql-indent-1 { padding-left: 3em !important; }
+.ql-indent-2 { padding-left: 6em !important; }
+.ql-indent-3 { padding-left: 9em !important; }
+.ql-indent-4 { padding-left: 12em !important; }
+.ql-indent-5 { padding-left: 15em !important; }
+.ql-indent-6 { padding-left: 18em !important; }
+.ql-indent-7 { padding-left: 21em !important; }
+.ql-indent-8 { padding-left: 24em !important; }
+
 body {
   font-family: var(--font-bonum);
   color: #0d1b1e;

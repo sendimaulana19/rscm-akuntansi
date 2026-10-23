@@ -247,7 +247,19 @@ export default function AdminProfilPage() {
                   <div>
                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#00282b' }}>Isi Konten *</label>
                     <div style={{ background: '#fff' }}>
+                      <style>{`
+                        .admin-profil-quill .ql-editor {
+                          font-family: 'Times New Roman', Times, Georgia, serif !important;
+                          font-size: 16px;
+                          line-height: 1.8;
+                          min-height: 250px;
+                        }
+                        .admin-profil-quill .ql-editor p {
+                          margin-bottom: 1em;
+                        }
+                      `}</style>
                       <ReactQuill 
+                        className="admin-profil-quill"
                         theme="snow" 
                         value={konten} 
                         onChange={setKonten}
