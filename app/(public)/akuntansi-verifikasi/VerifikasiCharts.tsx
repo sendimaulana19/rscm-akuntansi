@@ -4091,7 +4091,7 @@ export function BaProgressLineChart({
     : ''
 
   const sudahGradId = `areaSudahGrad_${colorTerbit.replace(/[^a-zA-Z0-9]/g, '')}`
-  const belumGradId = `areaBelumGrad_${colorTerbit.replace(/[^a-zA-Z0-9]/g, '')}`
+  const belumGradId = `areaBelumGrad_${colorTotal.replace(/[^a-zA-Z0-9]/g, '')}`
 
   const activeIndex = hoveredIdx !== null ? hoveredIdx : null
   const hoveredData = activeIndex !== null && activeIndex >= 0 && activeIndex < validData.length ? validData[activeIndex] : null
@@ -4121,16 +4121,16 @@ export function BaProgressLineChart({
       <div className="relative my-auto flex-1 flex items-center justify-center py-2 select-none overflow-x-auto">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible" style={{ maxHeight: 290, minWidth: 420 }}>
           <defs>
-            {/* Shading Area Belum Terbit BA (Warm Rose Gradient) */}
+            {/* Shading Area Belum Terbit BA (Senada dengan garis/titik Total colorTotal, tidak merah) */}
             <linearGradient id={belumGradId} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#fb7185" stopOpacity="0.06" />
+              <stop offset="0%" stopColor={colorTotal} stopOpacity="0.20" />
+              <stop offset="100%" stopColor={colorTotal} stopOpacity="0.04" />
             </linearGradient>
 
-            {/* Shading Area Sudah Terbit BA (Vibrant Gradient) */}
+            {/* Shading Area Sudah Terbit BA (Senada dengan garis/titik Sudah Terbit colorTerbit) */}
             <linearGradient id={sudahGradId} x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor={colorTerbit} stopOpacity="0.38" />
-              <stop offset="100%" stopColor={colorTerbit} stopOpacity="0.10" />
+              <stop offset="100%" stopColor={colorTerbit} stopOpacity="0.08" />
             </linearGradient>
           </defs>
 
@@ -4370,7 +4370,7 @@ export function BaProgressLineChart({
                 {/* 3. Belum Terbit BA (Selisih) */}
                 <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/10 text-[11px]">
                   <span className="text-gray-300">Belum Terbit:</span>
-                  <span className="font-bold text-rose-300">
+                  <span className="font-bold text-teal-200">
                     {formatRawValue(Math.max(0, hoveredData.totalRaw - hoveredData.terbitRaw))} ({Math.max(0, 100 - hoveredData.terbitPct).toFixed(1)}%)
                   </span>
                 </div>
@@ -4381,16 +4381,16 @@ export function BaProgressLineChart({
       </div>
 
       {/* Legend Garis & Area di Bawah */}
-      <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs font-bold pt-3 border-t border-gray-100 font-nav">
+      <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold pt-3 border-t border-gray-100 font-nav">
         {/* Total Target 100% */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 border border-[#268484]/25 text-[#268484] shadow-xs">
-          <span className="w-4 h-1 rounded-full bg-[#268484] inline-block" />
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-teal-50 border border-[#268484]/25 text-[#268484] shadow-xs">
+          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: colorTotal }} />
           <span>{totalLabel} (100%)</span>
         </div>
 
-        {/* Area Sudah Terbit BA */}
+        {/* Sudah Terbit BA */}
         <div
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-xs"
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border shadow-xs"
           style={{
             backgroundColor: colorTerbit === '#d0db41' ? '#fbfde8' : '#eef9fa',
             borderColor: colorTerbit === '#d0db41' ? '#d0db41' : '#01bcce',
@@ -4398,16 +4398,10 @@ export function BaProgressLineChart({
           }}
         >
           <span
-            className="w-3.5 h-3.5 rounded-md inline-block shadow-xs"
-            style={{ backgroundColor: colorTerbit, opacity: 0.85 }}
+            className="w-2.5 h-2.5 rounded-full inline-block"
+            style={{ backgroundColor: colorTerbit }}
           />
-          <span>Area {terbitLabel} (Sudah)</span>
-        </div>
-
-        {/* Area Belum Terbit BA */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 shadow-xs">
-          <span className="w-3.5 h-3.5 rounded-md inline-block bg-rose-400 opacity-80 shadow-xs" />
-          <span>Area Belum Terbit BA</span>
+          <span>{terbitLabel} (%)</span>
         </div>
       </div>
     </div>
