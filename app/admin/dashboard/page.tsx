@@ -73,6 +73,7 @@ export default function AdminDashboardPage() {
             { label: 'Laporan Keuangan', href: '/admin/laporan-keuangan', icon: '📋' },
             { label: 'Akuntansi Manajemen', href: '/admin/akuntansi-manajemen', icon: '🏢' },
             { label: 'Akuntansi Verifikasi', href: '/admin/akuntansi-verifikasi', icon: '📑' },
+            { label: 'KPI & Sasaran Mutu', href: '/admin/kpi', icon: '🎯' },
             { label: 'Pusat Edukasi', href: '/admin/pusat-edukasi', icon: '🎥' },
             { label: 'Kepuasan Pelanggan', href: '/admin/kepuasan-pelanggan', icon: '⭐' },
             { label: 'Regulasi & Kebijakan', href: '/admin/regulasi-kebijakan', icon: '⚖️' },

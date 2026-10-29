@@ -49,6 +49,10 @@ export default async function ProfilSlugPage({ params }: Props) {
     redirect('/profil/budaya-kerja')
   }
 
+  if (slug === 'kpi') {
+    redirect('/profil/kpi')
+  }
+
   const { data, error } = await supabase
     .from('halaman_profil')
     .select('id, slug, judul, konten, gambar_url, file_url, updated_at')
@@ -70,14 +74,6 @@ export default async function ProfilSlugPage({ params }: Props) {
     }
   }
 
-  const isKpi = slug === 'kpi'
-  
-  if (isKpi && halaman?.konten) {
-    let url = halaman.konten.replace(/<[^>]+>/g, '').trim()
-    if (url.startsWith('http')) {
-      redirect(url)
-    }
-  }
 
   if (!halaman) return null;
 

@@ -30,8 +30,14 @@ export default function AdminProfilPage() {
       .single()
 
     if (data) {
-      setJudul(data.judul || '')
-      setKonten(data.konten || '')
+      if (selectedSlug === 'kpi' && data.konten && (data.konten.includes('kenari') || data.konten.startsWith('http'))) {
+        await supabase.from('halaman_profil').update({ konten: '' }).eq('slug', 'kpi')
+        setJudul(data.judul || 'Key Performance Indicator (KPI)')
+        setKonten('')
+      } else {
+        setJudul(data.judul || '')
+        setKonten(data.konten || '')
+      }
       setGambarUrl(data.gambar_url || '')
     } else {
       // Default templates if not exists
@@ -173,6 +179,14 @@ export default function AdminProfilPage() {
               <option value="kpi">Key Performance Indicators (KPI)</option>
               <option value="budaya-kerja">Budaya Kerja</option>
             </select>
+            {slug === 'kpi' && (
+              <div style={{ marginTop: '12px', padding: '12px 16px', background: '#e0f9fa', borderRadius: '10px', border: '1px solid #b2ebf2', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                <span style={{ color: '#00282b' }}>💡 Untuk mengelola tabel indikator KPI, ISO Like, dan RSCM Award secara lengkap, buka panel khusus <strong>Kelola KPI</strong>.</span>
+                <Link href="/admin/kpi" style={{ fontWeight: 700, color: '#015a61', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+                  Buka Menu Kelola KPI →
+                </Link>
+              </div>
+            )}
             {slug === 'budaya-kerja' && (
               <div style={{ marginTop: '12px', padding: '12px 16px', background: '#e0f9fa', borderRadius: '10px', border: '1px solid #b2ebf2', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                 <span style={{ color: '#00282b' }}>💡 Untuk mengelola Budaya Kerja dengan fitur lengkap (Banner & Live Preview), buka menu khusus <strong>Budaya Kerja</strong>.</span>
@@ -196,6 +210,32 @@ export default function AdminProfilPage() {
 
           {loading ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Memuat data...</div>
+          ) : slug === 'kpi' ? (
+            <div style={{ padding: '32px 24px', textAlign: 'center', background: '#f8fdfd', borderRadius: '12px', border: '1.5px dashed #b2ebf2' }}>
+              <p style={{ fontSize: '15px', color: '#00282b', fontWeight: 700, marginBottom: '8px' }}>
+                Halaman KPI kini dikelola melalui Panel Tabel KPI Khusus
+              </p>
+              <p style={{ fontSize: '13px', color: '#527377', marginBottom: '20px' }}>
+                Tautan eksternal lama (Kenari) telah dihapus. Silakan kelola tabel KPI, ISO Like, dan RSCM Award secara langsung di menu Kelola KPI.
+              </p>
+              <Link
+                href="/admin/kpi"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  background: '#00282b',
+                  color: '#d0db41',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  textDecoration: 'none',
+                }}
+              >
+                Buka Panel Kelola KPI →
+              </Link>
+            </div>
           ) : (
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
@@ -210,74 +250,57 @@ export default function AdminProfilPage() {
                 />
               </div>
 
-              {slug === 'kpi' ? (
-                <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#00282b' }}>Tautan Halaman KPI (Eksternal) *</label>
-                  <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>Masukkan tautan web yang ingin dituju saat menu KPI diklik (misal: https://lookerstudio.google.com/...)</p>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#00282b' }}>Gambar Header / Cover</label>
+                {gambarUrl && !file && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <img src={gambarUrl} alt="Cover" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid #ddd', objectFit: 'cover' }} />
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <input
-                    type="url"
-                    value={konten}
-                    onChange={e => setKonten(e.target.value)}
-                    placeholder="https://..."
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1.5px solid #cce8ea', fontSize: '14px', outline: 'none' }}
-                    required
+                    type="file"
+                    accept="image/*"
+                    onChange={e => setFile(e.target.files?.[0] || null)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cce8ea', fontSize: '14px', background: '#f8fdfd' }}
+                  />
+                  {file && <span style={{ fontSize: '13px', color: '#00782b', fontWeight: 600, whiteSpace: 'nowrap' }}>File dipilih</span>}
+                </div>
+                <p style={{ fontSize: '12px', color: '#888', marginTop: '6px' }}>Format: JPG, PNG. Rekomendasi ukuran horizontal (landscape).</p>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#00282b' }}>Isi Konten *</label>
+                <div style={{ background: '#fff' }}>
+                  <style>{`
+                    .admin-profil-quill .ql-editor {
+                      font-family: 'Times New Roman', Times, Georgia, serif !important;
+                      font-size: 16px;
+                      line-height: 1.8;
+                      min-height: 250px;
+                    }
+                    .admin-profil-quill .ql-editor p {
+                      margin-bottom: 1em;
+                    }
+                  `}</style>
+                  <ReactQuill 
+                    className="admin-profil-quill"
+                    theme="snow" 
+                    value={konten} 
+                    onChange={setKonten}
+                    style={{ height: '300px', marginBottom: '40px' }}
+                    modules={{
+                      toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        ['clean']
+                      ]
+                    }}
                   />
                 </div>
-              ) : (
-                <>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#00282b' }}>Gambar Header / Cover</label>
-                    {gambarUrl && !file && (
-                      <div style={{ marginBottom: '12px' }}>
-                        <img src={gambarUrl} alt="Cover" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid #ddd', objectFit: 'cover' }} />
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={e => setFile(e.target.files?.[0] || null)}
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cce8ea', fontSize: '14px', background: '#f8fdfd' }}
-                      />
-                      {file && <span style={{ fontSize: '13px', color: '#00782b', fontWeight: 600, whiteSpace: 'nowrap' }}>File dipilih</span>}
-                    </div>
-                    <p style={{ fontSize: '12px', color: '#888', marginTop: '6px' }}>Format: JPG, PNG. Rekomendasi ukuran horizontal (landscape).</p>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#00282b' }}>Isi Konten *</label>
-                    <div style={{ background: '#fff' }}>
-                      <style>{`
-                        .admin-profil-quill .ql-editor {
-                          font-family: 'Times New Roman', Times, Georgia, serif !important;
-                          font-size: 16px;
-                          line-height: 1.8;
-                          min-height: 250px;
-                        }
-                        .admin-profil-quill .ql-editor p {
-                          margin-bottom: 1em;
-                        }
-                      `}</style>
-                      <ReactQuill 
-                        className="admin-profil-quill"
-                        theme="snow" 
-                        value={konten} 
-                        onChange={setKonten}
-                        style={{ height: '300px', marginBottom: '40px' }}
-                        modules={{
-                          toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'align': [] }],
-                            ['clean']
-                          ]
-                        }}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
+              </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
                 <button

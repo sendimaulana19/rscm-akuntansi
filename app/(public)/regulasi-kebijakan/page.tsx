@@ -46,7 +46,8 @@ export default function DownloadDokumenPage() {
     return dokumen.filter(
       (d) =>
         d.nama?.toLowerCase().includes(q) ||
-        d.tahun?.toLowerCase().includes(q)
+        d.tahun?.toLowerCase().includes(q) ||
+        d.kategori?.toLowerCase().includes(q)
     )
   }, [dokumen, searchQuery])
 

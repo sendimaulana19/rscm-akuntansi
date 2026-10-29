@@ -1,57 +1,128 @@
 'use client'
-import { useState, useEffect } from 'react'
+
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { deleteFileFromStorage } from '@/lib/supabase/storage-helper'
-import { Plus, Trash2, Link as LinkIcon, Download } from 'lucide-react'
+import { Plus, Trash2, Link as LinkIcon, Upload, FileText, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
-export default function AdminDownloadDokumenPage() {
+const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
+
+export default function AdminLayananFormulirPage() {
   const [nama, setNama] = useState('')
-  const [deskripsi, setDeskripsi] = useState('')
-  const [tahun, setTahun] = useState('')
+  const [tahun, setTahun] = useState(String(new Date().getFullYear()))
+  const [tipe, setTipe] = useState<'link' | 'upload'>('upload')
   const [fileUrl, setFileUrl] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [data, setData] = useState<any[]>([])
+
+  const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    loadData()
+  }, [])
+
   async function loadData() {
-    const { data: d } = await supabase.from('layanan_formulir').select('*').order('created_at', { ascending: false })
+    const { data: d } = await supabase
+      .from('layanan_formulir')
+      .select('*')
+      .order('created_at', { ascending: false })
     setData(d || [])
   }
 
-  async function handleUpload() {
-    if (!fileUrl || !nama || !tahun) { setMessage('⚠️ Lengkapi nama, tahun, dan link!'); return }
-    setUploading(true); setMessage('')
-    
-    const { error } = await supabase.from('layanan_formulir').insert({ 
-      nama, 
-      deskripsi, 
-      kategori: tahun, // using kategori as fallback or we can use the explicit tahun column
-      file_url: fileUrl, 
-      file_name: nama, 
-      jumlah_unduhan: 0 
-    })
-    
-    // Actually wait, let's use a real 'tahun' column. So we insert 'tahun'
-    // I will instruct the user to run SQL to add 'tahun'
-    
-    if (error) { setMessage('❌ Gagal simpan: ' + error.message) }
-    else { 
-      setMessage('✅ Berhasil!')
-      setNama('')
-      setDeskripsi('')
-      setTahun('')
-      setFileUrl('')
-      loadData() 
+  function handleSelectFile(selected: File | null) {
+    if (!selected) {
+      setFile(null)
+      return
     }
-    setUploading(false); setTimeout(() => setMessage(''), 4000)
+    if (selected.size > MAX_FILE_SIZE) {
+      setMessage('⚠️ Ukuran file melebihi batas maksimal 20MB!')
+      return
+    }
+    setMessage('')
+    setFile(selected)
+  }
+
+  async function handleSave() {
+    if (!nama.trim()) {
+      setMessage('⚠️ Judul dokumen layanan / formulir wajib diisi!')
+      return
+    }
+
+    if (tipe === 'link' && !fileUrl.trim()) {
+      setMessage('⚠️ Masukkan link dokumen / Google Drive!')
+      return
+    }
+
+    if (tipe === 'upload' && !file) {
+      setMessage('⚠️ Silakan pilih file dokumen untuk diupload!')
+      return
+    }
+
+    setUploading(true)
+    setMessage('')
+
+    try {
+      let finalUrl = fileUrl.trim()
+      let finalFileName = nama.trim()
+
+      if (tipe === 'upload' && file) {
+        const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const storagePath = `layanan-formulir/${Date.now()}-${cleanName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('rscm-files')
+          .upload(storagePath, file)
+
+        if (uploadError) {
+          setMessage('❌ Gagal upload file: ' + uploadError.message)
+          setUploading(false)
+          return
+        }
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('rscm-files').getPublicUrl(storagePath)
+
+        finalUrl = publicUrl
+        finalFileName = file.name
+      }
+
+      const { error } = await supabase.from('layanan_formulir').insert({
+        nama: nama.trim(),
+        deskripsi: '',
+        kategori: tahun.trim() || String(new Date().getFullYear()),
+        file_url: finalUrl,
+        file_name: finalFileName,
+        jumlah_unduhan: 0,
+      })
+
+      if (error) {
+        setMessage('❌ Gagal menyimpan formulir: ' + error.message)
+      } else {
+        setMessage('✅ Dokumen layanan / formulir berhasil disimpan!')
+        setNama('')
+        setFileUrl('')
+        setFile(null)
+        if (fileRef.current) fileRef.current.value = ''
+        loadData()
+      }
+    } catch (err: any) {
+      setMessage('❌ Terjadi kesalahan: ' + err.message)
+    } finally {
+      setUploading(false)
+      setTimeout(() => setMessage(''), 4000)
+    }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Hapus dokumen ini?')) return
-    const item = data.find(d => d.id === id)
+    const item = data.find((d) => d.id === id)
+    if (!confirm(`Hapus dokumen "${item?.nama || 'ini'}"?`)) return
+
     if (item?.file_url) {
       await deleteFileFromStorage(supabase, item.file_url)
     }
@@ -61,79 +132,249 @@ export default function AdminDownloadDokumenPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f5' }}>
-      <div style={{ background: '#00282b' }} className="px-6 py-6">
-        <div className="max-w-4xl mx-auto">
-          <p className="font-nav text-xs text-white/50 mb-1"><Link href="/admin/dashboard" className="hover:text-white">← Dashboard</Link></p>
-          <h1 className="font-nav font-bold text-white text-xl">Kelola Layanan & Formulir</h1>
+      <div style={{ background: '#00282b' }} className="px-4 sm:px-6 py-6">
+        <div className="max-w-5xl mx-auto">
+          <p className="font-nav text-xs text-white/50 mb-1">
+            <Link href="/admin/dashboard" className="hover:text-white transition-colors">
+              ← Dashboard
+            </Link>
+          </p>
+          <h1 className="font-nav font-bold text-white text-xl">Kelola Layanan &amp; Formulir</h1>
+          <p className="font-nav text-xs text-white/70 mt-1">
+            Kelola dokumen layanan dan formulir publik Tim Kerja Akuntansi RSCM
+          </p>
         </div>
       </div>
-      
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="font-nav font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Plus size={18} style={{ color: '#01bcce' }} /> Tambah Formulir Baru
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* Form Tambah Dokumen */}
+        <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100">
+          <h2 className="font-nav font-bold text-gray-800 text-lg mb-1 flex items-center gap-2">
+            <Plus size={20} style={{ color: '#01bcce' }} />
+            Tambah Dokumen ke Bagian &quot;Layanan &amp; Formulir&quot;
           </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Judul Formulir / Layanan</label>
-              <input type="text" value={nama} onChange={e => setNama(e.target.value)} placeholder="Contoh: Formulir Permintaan Data" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none" />
-            </div>
-            
-            <div className="sm:col-span-1">
-              <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Tahun</label>
-              <input type="number" value={tahun} onChange={e => setTahun(e.target.value)} placeholder="Contoh: 2026" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none" />
-            </div>
-            
-            <div className="sm:col-span-1">
-              <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Link Google Drive</label>
-              <input type="url" value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://drive.google.com/..." className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none" />
-            </div>
-          </div>
-          
-          <div className="mt-6">
-            <button onClick={handleUpload} disabled={uploading} className="bg-[#01bcce] text-[#00282b] font-nav font-bold text-sm px-6 py-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50">
-              {uploading ? 'Menyimpan...' : 'Simpan Formulir'}
+          <p className="font-nav text-xs text-gray-400 mb-6">
+            Dokumen yang ditambahkan di sini akan tampil pada halaman publik Layanan &amp; Formulir.
+          </p>
+
+          {/* Mode Selection: Link vs Upload */}
+          <div className="flex items-center gap-3 mb-6 p-1.5 bg-gray-50 rounded-xl w-fit border border-gray-100">
+            <button
+              type="button"
+              onClick={() => setTipe('link')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-nav text-xs font-bold transition-all cursor-pointer ${
+                tipe === 'link'
+                  ? 'bg-white text-[#00282b] shadow-sm border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <LinkIcon size={14} style={{ color: tipe === 'link' ? '#01bcce' : undefined }} />
+              Link URL / Google Drive
             </button>
-            {message && <span className="ml-4 font-nav text-sm font-semibold">{message}</span>}
+            <button
+              type="button"
+              onClick={() => setTipe('upload')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-nav text-xs font-bold transition-all cursor-pointer ${
+                tipe === 'upload'
+                  ? 'bg-white text-[#00282b] shadow-sm border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Upload size={14} style={{ color: tipe === 'upload' ? '#01bcce' : undefined }} />
+              Upload File Langsung
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+            <div className="sm:col-span-2">
+              <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                Judul Dokumen *
+              </label>
+              <input
+                type="text"
+                value={nama}
+                onChange={(e) => setNama(e.target.value)}
+                placeholder="Contoh: Formulir Permintaan Data Keuangan RSCM"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none focus:border-[#01bcce] focus:ring-1 focus:ring-[#01bcce]"
+              />
+            </div>
+
+            <div>
+              <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                Tahun Dokumen
+              </label>
+              <input
+                type="text"
+                value={tahun}
+                onChange={(e) => setTahun(e.target.value)}
+                placeholder="Contoh: 2026"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none focus:border-[#01bcce] focus:ring-1 focus:ring-[#01bcce]"
+              />
+            </div>
+
+            {tipe === 'link' ? (
+              <div className="sm:col-span-3">
+                <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  Link Dokumen (Google Drive / URL) *
+                </label>
+                <input
+                  type="url"
+                  value={fileUrl}
+                  onChange={(e) => setFileUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/... atau https://..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none focus:border-[#01bcce] focus:ring-1 focus:ring-[#01bcce]"
+                />
+              </div>
+            ) : (
+              <div className="sm:col-span-3">
+                <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  Pilih File Dokumen (PDF, Excel, Word) *
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
+                    isDragging
+                      ? 'border-[#01bcce] bg-[#eef9fa]'
+                      : 'border-gray-200 hover:border-[#01bcce] bg-[#fafbfc]'
+                  }`}
+                  onClick={() => fileRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setIsDragging(true)
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setIsDragging(false)
+                    const dropped = e.dataTransfer.files?.[0] || null
+                    handleSelectFile(dropped)
+                  }}
+                >
+                  {file ? (
+                    <p
+                      className="font-nav text-sm font-semibold flex items-center justify-center gap-2"
+                      style={{ color: '#01bcce' }}
+                    >
+                      <FileText size={18} /> {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                    </p>
+                  ) : (
+                    <>
+                      <Upload size={24} className="mx-auto mb-2 text-gray-300" />
+                      <p className="font-nav text-sm text-gray-400">
+                        Klik untuk pilih file atau seret ke sini
+                      </p>
+                      <p className="font-nav text-xs text-gray-300 mt-1">
+                        PDF, XLSX, DOCX — maksimal 20MB
+                      </p>
+                    </>
+                  )}
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".pdf,.xlsx,.xls,.doc,.docx"
+                    className="hidden"
+                    onChange={(e) => handleSelectFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {message && (
+            <div
+              className={`mb-4 px-4 py-3 rounded-xl font-nav text-sm border ${
+                message.startsWith('✅')
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : message.startsWith('⚠️')
+                    ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                    : 'bg-red-50 text-red-600 border-red-200'
+              }`}
+            >
+              {message}
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={uploading}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl font-nav font-bold text-sm text-white disabled:opacity-60 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer shadow-sm"
+              style={{ background: '#00282b' }}
+            >
+              <Plus size={16} />
+              {uploading ? 'Menyimpan...' : 'Simpan Dokumen'}
+            </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="font-nav font-bold text-gray-800 mb-4">Daftar Layanan & Formulir</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-nav">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">Judul Layanan / Formulir</th>
-                  <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase">Tahun</th>
-                  <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase text-center">Diklik</th>
-                  <th className="py-3 px-4 text-xs font-bold text-gray-400 uppercase text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {data.map(d => (
-                  <tr key={d.id} className="hover:bg-gray-50/50">
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-gray-800">{d.nama}</div>
-                      <div className="text-xs text-gray-400 truncate max-w-xs">{d.file_url}</div>
-                    </td>
-                    <td className="py-3 px-4 text-sm font-semibold text-gray-600">{d.kategori || '-'}</td>
-                    <td className="py-3 px-4 text-sm text-gray-500 text-center">{d.jumlah_unduhan || 0}</td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <a href={d.file_url} target="_blank" rel="noreferrer" className="p-2 text-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100"><LinkIcon size={16} /></a>
-                        <button onClick={() => handleDelete(d.id)} className="p-2 text-red-500 bg-red-50 rounded-lg hover:bg-red-100"><Trash2 size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {data.length === 0 && (
-                  <tr><td colSpan={4} className="py-8 text-center text-gray-400 text-sm">Belum ada formulir</td></tr>
-                )}
-              </tbody>
-            </table>
+        {/* Daftar Layanan & Formulir */}
+        <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-nav font-bold text-gray-800 text-lg">
+              Daftar Layanan &amp; Formulir
+              <span className="ml-2 font-nav text-xs text-gray-400 font-normal">
+                ({data.length} dokumen)
+              </span>
+            </h2>
           </div>
+
+          {data.length === 0 ? (
+            <p className="font-nav text-sm text-gray-400 py-6 text-center">
+              Belum ada dokumen layanan / formulir yang tersimpan.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {data.map((d) => (
+                <div
+                  key={d.id}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors bg-white hover:bg-gray-50/50"
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(1,188,206,0.1)', color: '#01bcce' }}
+                  >
+                    <FileText size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-nav font-bold text-sm text-gray-800 truncate">{d.nama}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <span className="font-nav text-xs text-gray-500 font-semibold">
+                        Tahun {d.kategori || '-'}
+                      </span>
+                      <span className="text-gray-300 text-xs">•</span>
+                      <span className="font-nav text-xs text-gray-400">
+                        Dibuka {d.jumlah_unduhan || 0}x
+                      </span>
+                      <span className="text-gray-300 text-xs">•</span>
+                      <span className="font-nav text-xs text-gray-400 truncate max-w-xs">
+                        {d.file_url}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <a
+                      href={d.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-nav text-xs font-bold px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5"
+                      style={{ background: 'rgba(1,188,206,0.1)', color: '#01bcce' }}
+                    >
+                      <ExternalLink size={13} />
+                      Buka
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(d.id)}
+                      className="p-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 transition-colors cursor-pointer"
+                      title="Hapus Dokumen"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

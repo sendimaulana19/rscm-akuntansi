@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronDown, Menu, X } from 'lucide-react'
 
-const getNavItems = (kpiUrl: string) => [
+const navItems = [
   { label: 'Beranda', href: '/' },
   {
     label: 'Sub Tim Kerja',
@@ -21,7 +21,7 @@ const getNavItems = (kpiUrl: string) => [
     href: '#',
     children: [
       { label: 'Profil Tim Kerja Akuntansi', href: '/profil/tim-kerja-akuntansi' },
-      { label: 'KPI', href: kpiUrl, target: kpiUrl.startsWith('http') ? '_blank' : '_self' },
+      { label: 'KPI', href: '/profil/kpi' },
       { label: 'Budaya Kerja', href: '/profil/budaya-kerja' },
     ],
   },
@@ -41,8 +41,7 @@ const getNavItems = (kpiUrl: string) => [
   { label: 'Kontak', href: '/kontak' },
 ]
 
-export default function Navbar({ kpiUrl = '/profil/kpi' }: { kpiUrl?: string }) {
-  const navItems = getNavItems(kpiUrl)
+export default function Navbar({ kpiUrl }: { kpiUrl?: string }) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)

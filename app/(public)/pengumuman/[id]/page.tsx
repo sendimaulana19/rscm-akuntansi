@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -30,6 +33,28 @@ interface Pengumuman {
   file_url?: string
 }
 
+function formatPengumumanContent(raw: string): string {
+  if (!raw) return ''
+  let text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
+  // Format **bold** markdown
+  text = text.replace(/\*\*([^\n*]+?)\*\*/g, '<strong class="font-bold text-gray-900">$1</strong>')
+
+  // Format *bold* satu baris (gaya WhatsApp, hanya jika diawali spasi/awal baris dan ditutup pada baris yang sama)
+  text = text.replace(
+    /(^|[\s(])\*([^\s*][^*\n]*?[^\s*])\*(?=[\s.,!?:;)]|$)/gm,
+    '$1<strong class="font-bold text-gray-900">$2</strong>'
+  )
+
+  // Auto-link URL (http:// atau https://) yang belum berada di dalam atribut HTML
+  text = text.replace(
+    /(?<!["'=])(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[#01bcce] hover:underline font-bold break-all">$1</a>'
+  )
+
+  return text
+}
+
 export default async function PengumumanDetailPage({ params }: Props) {
   const supabase = await createClient()
   const { id } = await params
@@ -45,6 +70,7 @@ export default async function PengumumanDetailPage({ params }: Props) {
   }
 
   const item = data as Pengumuman
+  const formattedHtml = formatPengumumanContent(item.konten || '')
 
   return (
     <main style={{ minHeight: '100vh', fontFamily: '"TeX Gyre Bonum", Georgia, serif', background: '#f4f6f8' }}>
@@ -114,11 +140,17 @@ export default async function PengumumanDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* Prose content */}
+          {/* Prose content — white-space: pre-wrap menjaga seluruh baris baru (Enter) & spasi antar paragraf */}
           <div
             className="prose prose-lg max-w-none leading-relaxed text-gray-800"
-            style={{ fontFamily: '"Nunito", sans-serif', textAlign: 'justify' }}
-            dangerouslySetInnerHTML={{ __html: item.konten }}
+            style={{
+              fontFamily: '"Nunito", sans-serif',
+              textAlign: 'left',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              lineHeight: 1.75,
+            }}
+            dangerouslySetInnerHTML={{ __html: formattedHtml }}
           />
 
           {/* Document Attachment (if pdf type) */}

@@ -122,11 +122,17 @@ function AdminLaporanKeuanganContent() {
       setMessage('⚠️ Lengkapi judul dan pilih file!')
       return
     }
+    const parsedYear = parseInt(tahun.trim(), 10)
+    if (isNaN(parsedYear) || parsedYear < 1900 || parsedYear > 2100) {
+      setMessage('⚠️ Masukkan tahun yang valid (contoh: 2026)!')
+      return
+    }
     setUploading(true)
     setMessage('')
 
     try {
-      const fileName = `${Date.now()}-${file.name}`
+      const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const fileName = `${Date.now()}-${cleanName}`
       const { error: uploadError } = await supabase.storage
         .from('rscm-files')
         .upload(fileName, file)
@@ -142,7 +148,7 @@ function AdminLaporanKeuanganContent() {
       const table = tab === 'laporan' ? 'laporan_keuangan' : 'catatan_laporan_keuangan'
       const dataToInsert: any = {
         judul: judul.trim(),
-        tahun: parseInt(tahun) || new Date().getFullYear(),
+        tahun: parsedYear,
         file_url: publicUrl,
         file_name: file.name
       }
@@ -534,15 +540,17 @@ function AdminLaporanKeuanganContent() {
                     </select>
                   </div>
                 )}
-                <div>
+                <div className={tab === 'catatan' ? 'sm:col-span-2' : ''}>
                   <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Tahun</label>
-                  <select
+                  <input
+                    type="number"
+                    min={1900}
+                    max={2100}
                     value={tahun}
                     onChange={e => setTahun(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none focus:border-[#01bcce]"
-                  >
-                    {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y}>{y}</option>)}
-                  </select>
+                    placeholder="Contoh: 2026"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 font-nav text-sm outline-none focus:border-[#01bcce] focus:ring-1 focus:ring-[#01bcce]"
+                  />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="font-nav text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">File (PDF, Excel, Word)</label>

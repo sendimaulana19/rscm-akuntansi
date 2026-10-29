@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Megaphone, Camera, Download, Users, TrendingUp,
-  FileText, CheckSquare, Video, Star, Building, LogOut, Settings, ChevronRight, Sparkles
+  FileText, CheckSquare, Video, Star, Building, LogOut, Settings, ChevronRight, Sparkles, Target
 } from 'lucide-react'
 
 const adminModules = [
@@ -12,6 +12,7 @@ const adminModules = [
   { icon: <FileText size={20} />, label: 'Laporan Keuangan', desc: 'Upload laporan & CALK', href: '/admin/laporan-keuangan', color: '#00282b' },
   { icon: <CheckSquare size={20} />, label: 'Akuntansi Manajemen', desc: 'Kelola laporan KSO', href: '/admin/akuntansi-manajemen', color: '#d0db41', textColor: '#00282b' },
   { icon: <CheckSquare size={20} />, label: 'Akuntansi Verifikasi', desc: 'Kelola dokumen tagihan', href: '/admin/akuntansi-verifikasi', color: '#01bcce' },
+  { icon: <Target size={20} />, label: 'KPI & Sasaran Mutu', desc: 'Kelola KPI, ISO Like & RSCM Award', href: '/admin/kpi', color: '#015a61' },
   { icon: <Sparkles size={20} />, label: 'Budaya Kerja', desc: 'Kelola artikel & nilai budaya kerja', href: '/admin/budaya-kerja', color: '#01bcce' },
   { icon: <Video size={20} />, label: 'Video Tutorial', desc: 'Upload video & judul', href: '/admin/video-tutorial', color: '#01bcce' },
   { icon: <Download size={20} />, label: 'Download Dokumen', desc: 'Kelola dokumen unduhan', href: '/admin/download-dokumen', color: '#d0db41', textColor: '#00282b' },
